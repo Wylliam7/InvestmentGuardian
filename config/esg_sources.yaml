@@ -1,0 +1,109 @@
+# Données ESG DOCUMENTÉES, avec provenance. Aucune note ESG ni aucun score n'existe dans ce fichier, et le prototype n'en calcule aucun.
+# Les CSV officiels du Datathon ne contiennent aucune donnée ESG au niveau des entreprises (seule mention : l'étiquette « ESG-screened »
+# du FNB ESGV, voir DATA_AUDIT.md / DECISIONS.md V3).
+#
+# Règles de lecture (appliquées par src/guardian/esg/) :
+# - une entreprise listée dans `records` = « controverse documentée à examiner » (décision d'une source identifiée, pas un jugement du prototype) ;
+# - une entreprise seulement présente dans `checks.checked_tickers` = « aucune controverse identifiée dans les sources consultées » ;
+# - tout le reste = « information insuffisante », sauf `not_applicable` (justifié) ;
+# - l'ABSENCE de résultat n'est jamais une preuve d'absence de controverse.
+version: "0.1-v3"
+retrieved_on: "2026-11-14"
+
+sources:
+  nbim_exclusion_list:
+    publisher: "Norges Bank Investment Management (NBIM), gestionnaire du fonds souverain norvégien Government Pension Fund Global"
+    title: "Observation and exclusion of companies"
+    url: "https://www.nbim.no/en/responsibility/exclusion-of-companies"
+    short_name: "NBIM (Banque de Norvège) — liste d'exclusion et d'observation des entreprises"
+    # Référence : `url_kind: list_page` = page de liste générale ; elle n'est PAS une page dédiée à une décision (voir `decision_url` des enregistrements).
+    url_kind: list_page
+    url_status: verified            # page ouverte le 2026-11-14 ; les lignes de CNQ.TO et TD.TO y figuraient avec les dates indiquées plus bas
+    url_verified_on: "2026-11-14"
+    consulted_on: "2026-11-14"
+    nature: >
+      Liste officielle des entreprises exclues du fonds ou placées sous observation par la Banque de Norvège, avec la catégorie
+      (critère de produit ou de conduite), le critère, la décision (exclusion ou observation) et la date de publication.
+    scope: >
+      Entreprises de l'univers d'investissement de ce fonds, à l'échelle mondiale. Décisions publiées du 2006-01-01 au 2026-02-26
+      (dernière date visible lors de la consultation).
+    retrieval_method: >
+      Une seule consultation de la page publique ; comparaison manuelle des noms des 20 actions individuelles de l'univers du Datathon avec
+      les noms de la liste. Les filiales, les changements de nom et les liens de propriété ne sont pas suivis.
+    limits:
+      - "Une exclusion ou une observation est la décision d'un investisseur institutionnel selon ses propres lignes directrices ; ce n'est ni un jugement de culpabilité ni une note ESG."
+      - "La liste ne recense pas toutes les controverses : une entreprise absente de la liste peut être concernée par d'autres controverses."
+      - "Les critères de la liste sont propres à ce fonds (par exemple charbon, tabac, armes, émissions de gaz à effet de serre, violations des droits, corruption)."
+      - "Les décisions peuvent être révoquées ou mises à jour : la liste est un état à la date de consultation."
+    terms: >
+      Page web publique de l'institution. Les conditions de réutilisation n'ont pas été examinées en détail (aucune page de conditions n'a été
+      trouvée lors de la recherche). Usage limité ici à de brèves mentions factuelles attribuées, à des fins éducatives non commerciales ;
+      à confirmer avant toute diffusion plus large.
+  vanguard_esgv_profile:
+    publisher: "Vanguard (émetteur du FNB)"
+    title: "Vanguard ESG U.S. Stock ETF (ESGV) — profil du fonds, document 4393"
+    url: "https://fund-docs.vanguard.com/F4393.pdf"
+    short_name: "Vanguard — profil du fonds ESGV (document 4393)"
+    url_kind: document
+    url_status: to_verify           # adresse vue dans des résultats de recherche ; le PDF n'a pas pu être ouvert par les outils du prototype
+    consulted_on: "2026-11-14"
+    nature: "Description par l'émetteur des critères d'exclusion appliqués par le fonds (niveau du FONDS, pas des entreprises détenues)."
+    scope: "Fonds ESGV uniquement, tel que décrit par l'émetteur ; la liste des positions n'a pas été consultée."
+    retrieval_method: >
+      Extraits des documents officiels de l'émetteur lus dans des résultats de recherche (fund-docs.vanguard.com et
+      institutional.vanguard.com, profil 4393). Le PDF complet n'a pas pu être ouvert par les outils de ce prototype : à vérifier à la source.
+    limits:
+      - "Il s'agit d'un filtre déclaré par l'émetteur, pas d'une vérification des positions détenues ni d'une certification."
+      - "Les critères du fonds (activités exclues, normes de travail, de droits de la personne, d'environnement et de lutte anticorruption) ne coïncident pas nécessairement avec les préférences de Mateo."
+      - "La composition du fonds change dans le temps."
+    terms: "Documents publics de l'émetteur. Paraphrasés ici avec attribution ; conditions détaillées non examinées."
+
+# Références (V3.2) : un enregistrement peut porter `decision_url` (+ `decision_url_verified_on`) UNIQUEMENT si cette page précise a été ouverte et vérifiée.
+# Aucun enregistrement n'en porte aujourd'hui : la liste NBIM n'expose pas de page par décision dans nos consultations. L'interface affiche alors la page de liste
+# en précisant qu'elle n'est pas la page de la décision. Une source `url_status: to_verify` s'affiche « Référence à vérifier », sans lien.
+
+# Constats documentés par entreprise (cotation du Datathon → enregistrement de la source).
+records:
+  - ticker: CNQ.TO
+    source: nbim_exclusion_list
+    company_name_in_source: "Canadian Natural Resources Ltd"
+    category: "Critère de conduite"
+    criterion_en: "Unacceptable greenhouse gas emissions"
+    criterion_fr: "Émissions de gaz à effet de serre jugées inacceptables"
+    decision: exclusion
+    published: "2020-05-13"
+    dimension: "E"
+    relevance: direct
+  - ticker: TD.TO
+    source: nbim_exclusion_list
+    company_name_in_source: "Toronto-Dominion Bank/The"
+    category: "Critère de conduite"
+    criterion_en: "Gross corruption or other serious financial crime"
+    criterion_fr: "Corruption grave ou autre crime financier grave"
+    decision: observation
+    published: "2025-06-11"
+    dimension: "G"
+    relevance: indirect
+
+# Vérifications effectuées : ces actions ont été cherchées dans la source ; les actions sans enregistrement ci-dessus n'y figuraient pas.
+checks:
+  - source: nbim_exclusion_list
+    checked_on: "2026-11-14"
+    checked_tickers: [RY.TO, TD.TO, MFC.TO, ENB.TO, CNQ.TO, CNR.TO, FTS.TO, ATD.TO, SHOP.TO, CSU.TO,
+                      AAPL, MSFT, NVDA, GOOGL, AMZN, TSLA, JPM, JNJ, PG, XOM]
+
+# Informations au niveau d'un FNB (ne valent pas vérification des positions).
+fund_level:
+  - ticker: ESGV
+    source: vanguard_esgv_profile
+    statement: >
+      L'émetteur indique que le fonds exclut les actions d'entreprises liées à certaines activités (divertissement pour adultes, alcool, tabac,
+      cannabis, jeux d'argent, armes, énergie nucléaire, charbon, pétrole et gaz) ainsi que celles qui ne respectent pas certaines normes de travail,
+      de droits de la personne, d'environnement et de lutte anticorruption.
+
+# Actifs pour lesquels le critère « entreprises liées à des controverses » est sans objet, avec la justification.
+not_applicable:
+  GLD: "Fonds adossé à de l'or physique : il ne détient pas d'actions d'entreprises. D'autres enjeux (par exemple l'origine de l'or) existent mais ne sont pas évalués ici."
+  BTC-USD: "Actif numérique sans entreprise émettrice. D'autres enjeux (par exemple la consommation d'énergie de certains réseaux) existent mais ne sont pas évalués ici."
+  ETH-USD: "Actif numérique sans entreprise émettrice. D'autres enjeux (par exemple la consommation d'énergie de certains réseaux) existent mais ne sont pas évalués ici."
+  TLT: "FNB d'obligations du Trésor américain (d'après son nom dans le jeu de données) : l'émetteur est un État, pas une entreprise."

@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from conftest import expected_compare, expected_evaluate
 from guardian.agent.agent import GuardianAgent
 from guardian.agent.tools import SessionContext
 from guardian.agent.tracer import Tracer
@@ -38,7 +39,7 @@ def test_live_agent_calls_real_financial_tool(real_service):
     # la trace correspond à l'exécution réelle : le résultat tracé est celui du moteur
     ev = [r for r in tr.tool_records if r.tool == "evaluate_portfolio"]
     if ev:
-        assert ev[0].result == {**real_service.analyze(WEIGHTS).to_tool_dict(), "portfolio": "A"}
+        assert ev[0].result == expected_evaluate(real_service, WEIGHTS)
     assert not tr.withheld and tr.text
 
 
@@ -90,7 +91,7 @@ def test_live_v1_compare_nvda40_with_diversified_portfolio_for_robert(real_servi
     assert "compare_scenarios" in {r.tool for r in tr.tool_records}
     assert all(r.status == "ok" for r in tr.tool_records) and not tr.withheld and tr.text
     cmp_rec = next(r for r in tr.tool_records if r.tool == "compare_scenarios")
-    assert cmp_rec.result == {**real_service.compare(a, b, "robert").to_tool_dict(), "profile": real_service.profiles["robert"]}   # trace = moteur déterministe
+    assert cmp_rec.result == expected_compare(real_service, a, b, "robert")   # trace = moteur déterministe
 
 
 def test_live_v1_same_portfolio_evaluated_for_both_named_profiles(real_service):
@@ -172,3 +173,71 @@ def test_live_v2_explain_my_risks_for_amira_same_portfolio():
     assert tr.context["profile_id"] == "amira" and tr.context["weights_a_pct"] == {"NVDA": 40.0, "XBB.TO": 35.0, "XIU.TO": 25.0}
     chk = next(r for r in tr.tool_records if r.tool == "check_profile_constraints" and r.status == "ok")
     assert chk.result["profile_id"] == "amira"
+
+
+# ----------------------------------------------------------------------------- V3 : Mateo et préférences ESG
+ESG_FALSE_CLAIMS = r"conforme ESG|portefeuille (est )?durable|est durable|respecte (toutes )?(ses|ses) préférences ESG\b(?! )|entièrement vérifi"
+
+
+def _mateo_agent(service, weights, weights_b=None):
+    return GuardianAgent(service, SessionContext(weights, "mateo", weights_b=weights_b), Tracer())
+
+
+def _show(tr):
+    print("\nOUTILS :", [(r.id, r.tool, r.status, r.arguments) for r in tr.tool_records], "| cycles :", tr.cycles, "| usage :", tr.usage)
+    print("RETENUE :", tr.withheld, tr.withheld_reason, "\nTEXTE :\n", tr.text)
+
+
+def test_live_v3_mateo_esg_question_with_insufficient_data(real_service):
+    """Question d'exemple du cahier V3 : l'agent réel doit appeler check_esg_preferences et ne pas affirmer la conformité."""
+    a = _preset_fractions("mateo_croissance_equilibree")
+    ag = _mateo_agent(real_service, a)
+    tr = ag.ask("Mateo veut éviter les entreprises controversées. Est-ce que ce portefeuille respecte ses préférences ESG ?")
+    _show(tr)
+    TRACES.mkdir(exist_ok=True)
+    (TRACES / "live_v3_mateo_esg_insuffisant.json").write_text(json.dumps(
+        {"question": tr.question, "model_id": tr.model_id, "region": tr.region, "started_at": tr.started_at, "context": tr.context,
+         "answer": tr.text, "withheld": tr.withheld, "usage": tr.usage, "tool_records": ag.tracer.export()}, ensure_ascii=False, indent=2))
+    assert tr.error is None and tr.clarification is None and not tr.withheld and tr.text, (tr.error, tr.withheld_reason)
+    esg = [r for r in tr.tool_records if r.tool == "check_esg_preferences"]
+    assert esg and esg[0].status == "ok" and esg[0].result["overall_state"] == "INSUFFICIENT" and all(r.turn == 1 for r in tr.tool_records)
+    import re
+    assert not re.search(ESG_FALSE_CLAIMS, tr.text, re.I), tr.text
+    assert re.search(r"insuffisan|ne peux pas confirmer|ne permettent pas|non évalu|impossible de confirmer", tr.text, re.I), tr.text
+
+
+def test_live_v3_mateo_esg_question_with_documented_information(real_service):
+    b = _preset_fractions("mateo_actions_canadiennes")
+    ag = _mateo_agent(real_service, b)
+    tr = ag.ask("Ce portefeuille contient-il des entreprises liées à des controverses documentées pour Mateo ?")
+    _show(tr)
+    assert tr.error is None and not tr.withheld and tr.text
+    esg = next(r for r in tr.tool_records if r.tool == "check_esg_preferences" and r.status == "ok")
+    assert esg.result["overall_state"] == "DOCUMENTED"
+    import re
+    assert re.search(r"Canadian Natural|CNQ", tr.text) and re.search(r"Toronto|TD", tr.text)
+    assert not re.search(ESG_FALSE_CLAIMS, tr.text, re.I) and not re.search(r"\bcoupable|\bcorrompu|a été condamn", tr.text, re.I), tr.text
+    # V3.1 : CNQ (exclusion environnementale) et TD (observation de gouvernance) ne sont pas fusionnés en un conflit unique
+    assert re.search(r"exclu|exclusion", tr.text, re.I) and re.search(r"observation", tr.text, re.I) and re.search(r"gouvernance", tr.text, re.I), tr.text
+    assert not re.search(r"30\s*%[^.\n]{0,60}(conflit|préférences? ESG)", tr.text, re.I), tr.text
+    assert esg.result["documented_categories"][0]["tickers"] == ["CNQ.TO"] and esg.result["complementary_information"][0]["tickers"] == ["TD.TO"]
+
+
+def test_live_v3_explain_my_risks_for_mateo_with_separate_esg_section():
+    from streamlit.testing.v1 import AppTest
+    at = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app" / "app.py"), default_timeout=240).run()
+    at.selectbox(key="profile_id").set_value("mateo").run()
+    at.button(key="explain_btn").click()
+    at.run()
+    assert not at.exception, at.exception
+    tr = at.session_state.history[-1]
+    _show(tr)
+    TRACES.mkdir(exist_ok=True)
+    (TRACES / "live_v3_explain_mateo.json").write_text(json.dumps(
+        {"question": tr.question, "kind": tr.kind, "context": tr.context, "answer": tr.text, "withheld": tr.withheld, "usage": tr.usage,
+         "tool_records": at.session_state.agent.tracer.export()}, ensure_ascii=False, indent=2))
+    assert tr.error is None and not tr.withheld and tr.text, tr.withheld_reason
+    ok = {r.tool for r in tr.tool_records if r.status == "ok"}
+    assert {"evaluate_portfolio", "check_profile_constraints", "check_esg_preferences"} <= ok
+    import re
+    assert not re.search(ESG_FALSE_CLAIMS, tr.text, re.I), tr.text

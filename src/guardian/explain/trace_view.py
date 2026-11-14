@@ -43,6 +43,8 @@ def describe_calls(records, profiles: dict, active_profile: str | None = None) -
             ok_text = f"A analysé votre portefeuille {port} (rendement, fluctuations, baisses, répartition)."
         elif r.tool == "check_profile_constraints":
             ok_text = f"A comparé les risques du portefeuille {port} avec le profil de {who} (Guardian Check)."
+        elif r.tool == "check_esg_preferences":
+            ok_text = f"A vérifié les préférences ESG de {who} pour le portefeuille {port} (sources consultées, couverture des données, informations manquantes)."
         elif r.tool == "compare_scenarios":
             ok_text = f"A comparé les deux allocations A et B sur la même période pour {who}."
         else:
@@ -76,5 +78,11 @@ def summary_lines(records, profiles: dict, active_profile: str | None = None) ->
         notes.append(f"Devise : dollar canadien ({facts['currency']}).")
     if facts["files"]:
         notes.append("Données : " + DATA_SOURCES)
+    esg = next((r for r in records if r.tool == "check_esg_preferences" and r.status == "ok" and r.result), None)
+    if esg and esg.result.get("applicable"):
+        srcs = (esg.result.get("provenance") or {}).get("esg_sources") or []
+        cov = esg.result["coverage"]["checked_in_sources_pct"]
+        notes.append(f"Sources ESG consultées : {', '.join(s['id'] for s in srcs) or 'aucune'} (date de consultation : "
+                     f"{', '.join(sorted({s['consulted_on'] for s in srcs})) or 'n.d.'}) ; couverture : {cov:g} % du portefeuille cherché dans ces sources.")
     return {"calls": calls, "n_ok": len(ok), "n_failed": len(calls) - len(ok), "notes": notes,
             "disclaimers": [TOOLS_DISCLAIMER if ok else "Aucun outil financier n'a été exécuté avec succès pour cette requête.", IA_DISCLAIMER]}

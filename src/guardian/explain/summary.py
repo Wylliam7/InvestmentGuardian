@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from guardian.explain.format import asset_label, fr, pct, pct_value
+from guardian.explain.funds import FUND_CLASSES
 from guardian.rules.engine import ATTENTION, CONFLIT, GuardianReport
 
 THEMES = (("concentration", ("R1", "R7")), ("actifs_fluctuants", ("R2",)), ("fluctuations_baisses", ("R4", "R5")))
@@ -62,7 +63,10 @@ def build_priority_summary(result, report: GuardianReport, profile: dict, univer
         if theme == "concentration":
             parts = []
             if "R1" in hit:
-                parts.append(f"la concentration dans {top_label} ({pct_value(100 * result.concentration.max_weight)} du portefeuille)")
+                is_fund = str(universe.loc[top, "asset_class"]) in FUND_CLASSES
+                parts.append(f"la concentration dans {top_label} ({pct_value(100 * result.concentration.max_weight)} du portefeuille)" if not is_fund else
+                             f"le poids de {top_label} ({pct_value(100 * result.concentration.max_weight)} du portefeuille ; c'est un FNB, qui détient plusieurs titres : "
+                             "sa diversification interne n'est pas mesurée)")
             if "R7" in hit:
                 parts.append(f"la répartition entre peu de positions (diversification équivalente à {fr(result.concentration.effective_n)} positions de poids égal)")
             text = _join(parts)

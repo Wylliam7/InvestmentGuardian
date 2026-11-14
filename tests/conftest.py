@@ -140,3 +140,22 @@ def v2_expected_metrics(service, weights_frac):
     return {"Rendement historique": fr_pct(r.cumulative_return), "Fluctuations du portefeuille": fr_pct(r.volatility),
             "Plus forte baisse historique": fr_pct(r.drawdown.max_drawdown),
             "Répartition de mon portefeuille": f"≈ {r.concentration.effective_n:.1f}".replace(".", ",") + " positions"}
+
+
+def expected_evaluate(service, weights):
+    """Sortie attendue de l'outil evaluate_portfolio : moteur V1 inchangé + contexte FNB (V3.1)."""
+    from guardian.explain.funds import fund_exposure
+    res = service.analyze(weights)
+    return {**res.to_tool_dict(), "fund_exposure": fund_exposure(res.weights, service.bundle.universe, res.concentration.max_ticker, res.concentration.max_weight),
+            "portfolio": "A"}
+
+
+def expected_compare(service, a, b, profile_id):
+    """Sortie attendue de l'outil compare_scenarios : moteur V1 inchangé + contexte FNB par portefeuille (V3.1)."""
+    from guardian.explain.funds import fund_exposure
+    c = service.compare(a, b, profile_id)
+    out = c.to_tool_dict()
+    for key, r in (("portfolio_A", c.a), ("portfolio_B", c.b)):
+        out[key]["fund_exposure"] = fund_exposure(r.weights, service.bundle.universe, r.concentration.max_ticker, r.concentration.max_weight)
+    out["profile"] = service.profiles[profile_id]
+    return out

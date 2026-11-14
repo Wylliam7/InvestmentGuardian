@@ -20,8 +20,8 @@ import streamlit as st  # noqa: E402
 
 from charts import (allocation_figure, comparison_drawdown_figure, comparison_performance_figure,  # noqa: E402
                     drawdown_figure, performance_figure)
-from components import render_card, render_request, render_summary  # noqa: E402
-from guardian.agent.agent import (EXPLAIN_RISKS_LABEL, EXPLAIN_RISKS_REQUIRED, GuardianAgent,  # noqa: E402
+from components import render_card, render_esg_section, render_request, render_summary  # noqa: E402
+from guardian.agent.agent import (EXPLAIN_ESG_REQUIRED, EXPLAIN_RISKS_LABEL, EXPLAIN_RISKS_REQUIRED, GuardianAgent,  # noqa: E402
                                   explain_risks_task)
 from guardian.agent.aws_status import credentials_status, test_bedrock_connection  # noqa: E402
 from guardian.agent.service import GuardianService  # noqa: E402
@@ -30,10 +30,13 @@ from guardian.agent.tracer import Tracer  # noqa: E402
 from guardian.data.loader import DataError  # noqa: E402
 from guardian.explain.cards import LEVELS, PLAIN_TITLES, build_cards, diversification_sentence  # noqa: E402
 from guardian.explain.compare_plain import COMPARE_FOOTER, plain_tradeoffs  # noqa: E402
+from guardian.explain.esg_view import build_esg_view  # noqa: E402
+from guardian.explain.funds import fund_exposure  # noqa: E402
 from guardian.explain.format import fr, fr_date, horizon_text, persona_sentence, pct, pct_value  # noqa: E402
 from guardian.explain.glossary import DIVERSIFICATION_HELP, METRIC_HELP, TERMS  # noqa: E402
 from guardian.explain.summary import build_priority_summary  # noqa: E402
 from guardian.finance.builder import normalize_to_100, parse_weight_rows, rows_from_weights  # noqa: E402
+from guardian.esg.data import EsgDataError  # noqa: E402
 from guardian.finance.compare import ComparisonError  # noqa: E402
 from guardian.finance.portfolio import PortfolioError  # noqa: E402
 from guardian.finance.presets import (PresetError, load_presets, load_profile_defaults, validate_presets,  # noqa: E402
@@ -217,8 +220,13 @@ profile_id = top1.selectbox("Profil de l'investisseur", PROFILE_IDS, key="profil
                             help="Robert et Amira sont des personnages fictifs du cas officiel du Datathon.")
 profile = service.profiles[profile_id]
 horizon = horizon_text(profile)
+HAS_ESG = bool(profile.get("esg_preferences"))
+esg_line = ""
+if HAS_ESG:
+    esg_line = "  \n**Préférences ESG :** " + " ".join(profile["esg_preferences"]["importance"].split()) + " " + " ".join(
+        c["official_wording"] for c in profile["esg_preferences"]["criteria"])
 top2.markdown(f"**{profile['display_name']}** · {profile['age']} ans · {profile['occupation']} · risque **{profile['risk_profile_label'].lower()}** · "
-              f"horizon **{horizon}**  \n**Objectif :** {profile['objective']}")
+              f"horizon **{horizon}**  \n**Objectif :** {profile['objective']}" + esg_line)
 
 notice = st.session_state.profile_notice
 if notice and notice["profile"] == profile_id:
@@ -344,6 +352,10 @@ with tab_dash:
     st.header("Comprendre mes risques")
     st.markdown(f"**Portefeuille A — {slot_label('A')}**, évalué pour **{profile['display_name']}**. "
                 f"Période historique : du {result.series.start.date()} au {result.series.end.date()} ({result.n_obs} dates communes), en dollars canadiens.")
+    if HAS_ESG:
+        st.info(f"Pour {profile['display_name']}, deux analyses distinctes : **A · Risques financiers** puis **B · Mes préférences ESG** (plus bas). "
+                "Elles ne sont jamais combinées en une note unique : un portefeuille peut avoir peu d'alertes financières tout en ayant une cohérence ESG inconnue.")
+        st.markdown("## A · Risques financiers")
     render_summary(summary)
 
     st.markdown("### Aller plus loin avec l'IA")
@@ -353,7 +365,8 @@ with tab_dash:
                "et ne donne aucun conseil d'achat ou de vente.")
     if explain_clicked:
         with st.spinner("L'assistant IA analyse votre portefeuille avec les outils Python…"):
-            tr = agent.ask(EXPLAIN_RISKS_LABEL, task=explain_risks_task(profile["display_name"]), required_tools=EXPLAIN_RISKS_REQUIRED, kind="explain_risks")
+            required = EXPLAIN_RISKS_REQUIRED + (EXPLAIN_ESG_REQUIRED if HAS_ESG else ())
+            tr = agent.ask(EXPLAIN_RISKS_LABEL, task=explain_risks_task(profile["display_name"], has_esg=HAS_ESG), required_tools=required, kind="explain_risks")
         st.session_state.history.append(tr)
         st.session_state.explain_turn = tr
     et = st.session_state.explain_turn
@@ -388,11 +401,22 @@ with tab_dash:
     k[2].caption(f"Du {fr_date(dd.peak_date)} au {fr_date(dd.trough_date)}.")
     k[3].metric("Répartition de mon portefeuille", f"≈ {fr(result.concentration.effective_n)} positions", help=METRIC_HELP["diversification"], border=True)
     k[3].caption(diversification_sentence(result))
+    _fx = fund_exposure(result.weights, service.bundle.universe, result.concentration.max_ticker, result.concentration.max_weight)
+    if _fx["has_funds"]:
+        k[3].caption(_fx["pedagogical_note"])
 
     st.markdown("### L'évolution historique")
     t_perf, t_dd = st.tabs(["Évolution de la valeur", "Plus fortes baisses"])
     t_perf.plotly_chart(performance_figure(result), width="stretch")
     t_dd.plotly_chart(drawdown_figure(result), width="stretch")
+
+    if HAS_ESG:
+        st.markdown("## B · Mes préférences ESG")
+        try:
+            esg_view = build_esg_view(service.check_esg(weights_a, profile_id), service.bundle.universe)
+            render_esg_section(esg_view)
+        except (EsgDataError, PortfolioError, ValueError) as e:
+            st.error(f"La vérification ESG est indisponible : {e}")
 
     with st.expander("Voir plus de statistiques"):
         st.markdown(f"- **Rendement annualisé historique :** {pct(result.annualized_return)} (moyenne géométrique par an, un fait passé)")
@@ -485,6 +509,11 @@ with tab_cmp:
                 cc1.dataframe(comp, width="stretch")
                 cc2.markdown("Par classe d'actifs")
                 cc2.dataframe(cls, width="stretch")
+            _fxa = fund_exposure(cmp_.a.weights, service.bundle.universe, cmp_.a.concentration.max_ticker, cmp_.a.concentration.max_weight)
+            _fxb = fund_exposure(cmp_.b.weights, service.bundle.universe, cmp_.b.concentration.max_ticker, cmp_.b.concentration.max_weight)
+            if _fxa["has_funds"] or _fxb["has_funds"]:
+                st.caption("À propos des FNB : un FNB détient plusieurs titres, donc une part de X % dans un FNB diversifié n'est pas équivalente à X % dans une entreprise "
+                           "individuelle. La diversification sous-jacente des FNB n'est pas mesurée ici ; les repères de concentration s'appliquent pourtant de la même façon.")
             with st.expander("Voir les niveaux de vigilance critère par critère"):
                 fa, fb = cmp_.report_a.by_id(), cmp_.report_b.by_id()
                 gtable = []
@@ -495,6 +524,21 @@ with tab_cmp:
                     gtable.append({"Critère": PLAIN_TITLES[rid], "A : mesure": fa_.display["measured"].replace(".", ","), "A : niveau": LEVELS[fa_.status][1],
                                    "B : mesure": fb_.display["measured"].replace(".", ","), "B : niveau": LEVELS[fb_.status][1]})
                 st.dataframe(pd.DataFrame(gtable), hide_index=True, width="stretch")
+            if HAS_ESG:
+                st.markdown("### Préférences ESG : comparaison (séparée des risques financiers)")
+                ea, eb = service.check_esg(applied_fractions("A"), profile_id), service.check_esg(applied_fractions("B"), profile_id)
+                st.dataframe(pd.DataFrame([
+                    {"": "État global", "A": ea.overall_label, "B": eb.overall_label},
+                    {"": "Part cherchée dans nos sources", "A": pct(ea.coverage_checked, 0), "B": pct(eb.coverage_checked, 0)},
+                    {"": "Part non évaluable faute de données", "A": pct(ea.weights_by_state.get("INSUFFICIENT", 0.0), 0), "B": pct(eb.weights_by_state.get("INSUFFICIENT", 0.0), 0)},
+                    {"": "Informations documentées à examiner (critère lié à la préférence)",
+                     "A": "; ".join(f"{c['label']} : {', '.join(c['tickers'])} ({pct(c['weight'], 0)})" for c in ea.categories if c["relevance"] == "direct") or "aucune dans les sources consultées",
+                     "B": "; ".join(f"{c['label']} : {', '.join(c['tickers'])} ({pct(c['weight'], 0)})" for c in eb.categories if c["relevance"] == "direct") or "aucune dans les sources consultées"},
+                    {"": "Information complémentaire (hors critère déclaré)",
+                     "A": "; ".join(f"{c['label']} : {', '.join(c['tickers'])} ({pct(c['weight'], 0)})" for c in ea.categories if c["relevance"] != "direct") or "aucune dans les sources consultées",
+                     "B": "; ".join(f"{c['label']} : {', '.join(c['tickers'])} ({pct(c['weight'], 0)})" for c in eb.categories if c["relevance"] != "direct") or "aucune dans les sources consultées"},
+                ]), hide_index=True, width="stretch")
+                st.caption("Cette comparaison ne désigne aucun portefeuille comme plus « durable » : l'absence d'information documentée n'est pas une preuve de conformité.")
             st.markdown("### Détail des alertes de chaque portefeuille")
             tab_a, tab_b = st.tabs(["Portefeuille A", "Portefeuille B"])
             cards_by = {"A": build_cards(a, cmp_.report_a, profile, service.bundle.universe, service.rules_cfg),
@@ -511,8 +555,9 @@ with tab_ai:
                 f"il n'invente pas de chiffres et ne décide pas à votre place. Profil actuel : **{profile['display_name']}** · "
                 f"portefeuille B {'activé' if use_b else 'désactivé'}.")
     st.caption("Chaque question est évaluée seule, avec ses propres appels d'outils.")
-    qcols = st.columns(len(SUGGESTED_QUESTIONS))
-    for i, (col, text) in enumerate(zip(qcols, SUGGESTED_QUESTIONS)):
+    questions = list(SUGGESTED_QUESTIONS) + ([f"{profile['display_name']} veut éviter les entreprises controversées. Ce portefeuille respecte-t-il ses préférences ESG ?"] if HAS_ESG else [])
+    qcols = st.columns(len(questions))
+    for i, (col, text) in enumerate(zip(qcols, questions)):
         col.button(f"💬 {text}", key=f"suggest_{i}", on_click=set_question_cb, args=(text,))
     with st.form("ask_form", clear_on_submit=False):
         q = st.text_area("Votre question", key="q_text", height=80)

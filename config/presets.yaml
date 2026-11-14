@@ -10,6 +10,7 @@
 profile_defaults:
   robert: {a: robert_nvda_40, b: robert_prudent}
   amira: {a: amira_tech_crypto, b: amira_croissance}
+  mateo: {a: mateo_croissance_equilibree, b: mateo_actions_canadiennes}
 
 presets:
   robert_prudent:
@@ -71,3 +72,38 @@ presets:
       SHOP.TO: 5
       BTC-USD: 20
       ETH-USD: 10
+  # --- V3 : Mateo. Compositions choisies pour leur INTENTION FINANCIÈRE (croissance équilibrée, peu de spéculation, ouverture mesurée à la
+  # technologie), pas pour obtenir un diagnostic ESG : aucune entreprise n'a été choisie parce qu'elle serait « verte » ou « controversée ».
+  mateo_croissance_equilibree:
+    label: "Mateo — Croissance équilibrée, ESG à vérifier"
+    profile_id: mateo
+    description: >
+      Croissance équilibrée à moyen et long terme : FNB larges d'actions canadiennes et américaines, un FNB à tendance technologique
+      (QQQ, ouverture aux technologies émergentes), obligations (30 %), trois grandes entreprises établies et un peu d'or.
+      Aucune cryptomonnaie. Le respect des préférences ESG de Mateo n'est pas établi : voir « Mes préférences ESG ».
+    weights_pct:
+      XIU.TO: 20
+      SPY: 20
+      QQQ: 10
+      XBB.TO: 20
+      AGG: 10
+      MSFT: 5
+      JNJ: 5
+      PG: 5
+      GLD: 5
+  mateo_actions_canadiennes:
+    label: "Mateo — Grandes entreprises canadiennes, ESG à vérifier"
+    profile_id: mateo
+    description: >
+      Scénario de comparaison : de grandes entreprises canadiennes (banques, énergie, transport, services publics) et un FNB obligataire,
+      sans actions américaines ni FNB larges. La composition est concentrée sur un seul marché et quelques secteurs, ce que le Guardian Check
+      ne mesure pas directement ; par position, le portefeuille est comparable au premier scénario. Le respect des préférences ESG de Mateo
+      n'est pas établi : voir « Mes préférences ESG ».
+    weights_pct:
+      RY.TO: 20
+      TD.TO: 15
+      ENB.TO: 15
+      CNQ.TO: 15
+      CNR.TO: 10
+      FTS.TO: 10
+      XBB.TO: 15

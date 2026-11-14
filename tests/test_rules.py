@@ -27,11 +27,11 @@ def test_thresholds_are_frozen_as_documented():
     cfg = engine.load_rules_config()
     th = {r: {p: (v["attention"], v["conflict"]) for p, v in rule["thresholds"].items()} for r, rule in cfg["rules"].items()}
     assert th == {
-        "R1": {"robert": (0.10, 0.20), "amira": (0.20, 0.35)},
-        "R2": {"robert": (0.10, 0.20), "amira": (0.35, 0.50)},
-        "R4": {"robert": (0.10, 0.14), "amira": (0.25, 0.35)},
-        "R5": {"robert": (0.15, 0.25), "amira": (0.40, 0.55)},
-        "R7": {"robert": (6, 4), "amira": (5, 3)},
+        "R1": {"robert": (0.10, 0.20), "amira": (0.20, 0.35), "mateo": (0.15, 0.30)},
+        "R2": {"robert": (0.10, 0.20), "amira": (0.35, 0.50), "mateo": (0.25, 0.35)},
+        "R4": {"robert": (0.10, 0.14), "amira": (0.25, 0.35), "mateo": (0.20, 0.25)},
+        "R5": {"robert": (0.15, 0.25), "amira": (0.40, 0.55), "mateo": (0.30, 0.40)},
+        "R7": {"robert": (6, 4), "amira": (5, 3), "mateo": (5.5, 3.5)},
     }
     assert cfg["volatile_asset_vol_threshold"] == 0.35
     assert cfg["status"] == "heuristique"
@@ -166,7 +166,7 @@ def test_invalid_config_is_rejected():
 
 def test_unknown_profile_is_rejected():
     with pytest.raises(ConfigError, match="Profil inconnu"):
-        evaluate(fake_result({"X": 1.0}, {"X": .1}), "mateo")
+        evaluate(fake_result({"X": 1.0}, {"X": .1}), "zzz")
 
 
 def test_amira_profile_matches_official_case():

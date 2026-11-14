@@ -4,7 +4,7 @@ import json
 import pytest
 from botocore.exceptions import ClientError, EndpointConnectionError, NoCredentialsError
 
-from conftest import ScriptedModel
+from conftest import ScriptedModel, expected_evaluate
 from guardian.agent.agent import GuardianAgent, evaluate_turn, map_error
 from guardian.agent.tools import SessionContext, build_tools
 from guardian.agent.tracer import Tracer, sanitize
@@ -21,11 +21,12 @@ def make_agent(service, model, fail=()):
 def test_tool_schemas_expose_real_parameters(real_service):
     tools = build_tools(real_service, SessionContext(WEIGHTS, "robert"), Tracer())
     specs = {t.tool_spec["name"]: t.tool_spec["inputSchema"]["json"]["properties"] for t in tools}
-    assert set(specs) == {"get_profile", "evaluate_portfolio", "check_profile_constraints", "compare_scenarios"}
+    assert set(specs) == {"get_profile", "evaluate_portfolio", "check_profile_constraints", "compare_scenarios", "check_esg_preferences"}
     assert set(specs["get_profile"]) == {"profile_id"}
     assert set(specs["evaluate_portfolio"]) == {"portfolio", "start_date", "end_date"}
     assert set(specs["check_profile_constraints"]) == {"profile_id", "portfolio", "start_date", "end_date"}
     assert set(specs["compare_scenarios"]) == {"profile_id", "start_date", "end_date"}
+    assert set(specs["check_esg_preferences"]) == {"profile_id", "portfolio"}
 
 
 # ---------------------------------------------------------------- appel réel d'outil et trace fidèle
@@ -38,7 +39,7 @@ def test_agent_calls_real_tool_and_trace_matches_execution(real_service):
     assert sorted(by_tool) == ["check_profile_constraints", "evaluate_portfolio"] and len(tr.tool_records) == 2
     ev = by_tool["evaluate_portfolio"]
     # la trace correspond à l'exécution : le résultat tracé est exactement celui du moteur
-    expected = {**real_service.analyze(WEIGHTS).to_tool_dict(), "portfolio": "A"}
+    expected = expected_evaluate(real_service, WEIGHTS)
     assert ev.status == "ok" and ev.result == expected
     assert ev.arguments == {"portfolio": "A", "start_date": "", "end_date": ""}
     assert ev.duration_ms > 0 and ev.result_digest and ev.started_at

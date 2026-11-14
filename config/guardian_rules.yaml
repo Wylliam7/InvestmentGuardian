@@ -9,7 +9,11 @@
 #   0.2-v1 (2026-11-14) : ajout du profil Amira (R1, R2, R4, R5) et de la règle R7 (profils Robert et Amira),
 #                         tels que définis dans PROJECT_SPEC.md §7 ; ajout de l'information R10.
 #                         Aucun seuil existant n'a été modifié.
-version: "0.2-v1"
+#   0.3-v3 (2026-11-14) : ajout du profil Mateo (risque modéré). Seuils FIXÉS MÉCANIQUEMENT avant de consulter le moindre diagnostic :
+#                         milieu arithmétique entre Robert (risque faible à modéré) et Amira (risque élevé), arrondi au multiple de 0,05
+#                         le plus proche (au supérieur en cas d'égalité) ; R7 arrondi à 0,5. Aucun seuil de Robert ni d'Amira n'a été modifié.
+#                         Heuristiques pédagogiques, pas des normes ; un test recalcule cette dérivation.
+version: "0.3-v3"
 status: "heuristique"
 frozen_on: "2026-11-14"
 
@@ -39,6 +43,7 @@ rules:
     thresholds:
       robert: {attention: 0.10, conflict: 0.20}
       amira: {attention: 0.20, conflict: 0.35}
+      mateo: {attention: 0.15, conflict: 0.30}
   R2:
     title: "Exposition aux actifs historiquement volatils"
     metric: "Somme des poids des actifs volatils (volatilité annualisée > seuil, ou crypto)"
@@ -56,6 +61,7 @@ rules:
     thresholds:
       robert: {attention: 0.10, conflict: 0.20}
       amira: {attention: 0.35, conflict: 0.50}
+      mateo: {attention: 0.25, conflict: 0.35}
   R4:
     title: "Volatilité du portefeuille"
     metric: "Volatilité annualisée du portefeuille (CAD)"
@@ -72,6 +78,7 @@ rules:
     thresholds:
       robert: {attention: 0.10, conflict: 0.14}
       amira: {attention: 0.25, conflict: 0.35}
+      mateo: {attention: 0.20, conflict: 0.25}
   R5:
     title: "Perte historique maximale (drawdown)"
     metric: "Valeur absolue du drawdown maximal"
@@ -89,6 +96,7 @@ rules:
     thresholds:
       robert: {attention: 0.15, conflict: 0.25}
       amira: {attention: 0.40, conflict: 0.55}
+      mateo: {attention: 0.30, conflict: 0.40}
   R7:
     title: "Diversification (nombre effectif de positions)"
     metric: "Nombre effectif de positions = 1 / HHI"
@@ -107,6 +115,7 @@ rules:
     thresholds:
       robert: {attention: 6, conflict: 4}
       amira: {attention: 5, conflict: 3}
+      mateo: {attention: 5.5, conflict: 3.5}
 
 # Information sans seuil (statut INFO).
 info_rules:

@@ -3,6 +3,15 @@
 Statut : **phase 0 et V0 terminées** (2026-11-14, ~18 h 50 UTC). **V1 n'est pas commencée : en attente de validation du participant.**
 Remplace la v1 (51–68 h), jugée trop ambitieuse pour un développeur solo.
 
+## Avancement V3 (2026-11-14, branche locale `feature/v3-mateo`, non commitée, non publiée)
+
+**V3 terminée, en attente de validation.** Départ du commit V2 `abf86f4` ; aucune autre branche modifiée ; aucun commit ni `git push`.
+
+- **Ajouts** : profil Mateo (cas officiel, formulations vérifiées dans le PDF) avec ses seuils financiers dérivés mécaniquement ; deux scénarios ; module ESG déterministe et données ESG documentées avec provenance (`config/esg_sources.yaml`) ; outil `check_esg_preferences` ; section « Mes préférences ESG » séparée des risques financiers ; comparaison ESG A/B ; contrôle de cohérence des pourcentages cités par le modèle.
+- **Inchangés (vérifié par test)** : moteur financier, seuils de Robert et d'Amira, données officielles, scénarios de V1.
+- **Tests** : 284 tests hors AWS réussis, 12 tests live ignorés par défaut ; 9 requêtes agent réelles contre Bedrock pendant la validation V3.
+- **Reste à faire (hors V3)** : revue visuelle, README, dépôt, livrables de soumission ; confirmation des conditions de réutilisation de la liste NBIM ; éventuel élargissement des sources ESG.
+
 ## Avancement V2 (2026-11-14, branche locale `feature/v2-ux`, non publiée)
 
 **V2 terminée, en attente de validation.** Départ du commit V1 `e5044f8` ; `main` et `feature/v1` n'ont pas été modifiées ; aucun `git push`. Les changements de V2 ne sont pas commités.
@@ -167,3 +176,12 @@ Ordre de suppression : (1) tout le « hors MVP » ; (2) graphique de corrélatio
 - Raffinement discuté de R1 (FNB diversifiés vs titres individuels), à décider avec une justification indépendante du résultat.
 - R3, R6, R8, R9 ; `sensitivity_sweep` et `analyze_asset` ; export du rapport ; relecture d'une trace réelle enregistrée.
 - Mémoire de suivi reconstruite explicitement (sans réinjecter de résultats d'outils anciens).
+
+### Avancement V3.1 (corrections après revue V3, 2026-11-14)
+- [x] Distinction CNQ.TO (exclusion environnementale) / TD.TO (observation de gouvernance), poids par catégorie, aucune fusion en « 30 % ».
+- [x] Formulation FNB (cartes, résumé, comparaison, sorties d'outils) sans changer poids, HHI, seuils ni statuts.
+- [x] Prompt (règles 13 et 14) et sorties structurées de l'outil ESG ; cinq outils et traçabilité conservés.
+- [x] Tests : 304 réussis, 12 ignorés hors AWS ; tests live V3 relancés. Non commité.
+
+### Avancement V3.2 (visibilité des sources ESG, 2026-11-14)
+- [x] Source, type, date et lien officiel par constat ; « Référence à vérifier » sans URL vérifiée ; références générées par le moteur sous la réponse de l'IA ; périmètre de recherche et FNB non évaluables ; provenance complète conservée. Tests : 324 réussis, 12 ignorés. Non commité.

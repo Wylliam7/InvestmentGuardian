@@ -158,3 +158,10 @@ Corrélations (rendements quotidiens, CAD) : NVDA–QQQ 0,76, NVDA–SPY 0,68, N
 | D9 | Macro exclue du MVP | Risque de fuite temporelle, pas de besoin immédiat |
 | D10 | Données sources en lecture seule ; chargement par un module qui calcule les SHA-256 et refuse les fichiers modifiés (ou le signale) | Reproductibilité |
 | D11 | Stocker les données dérivées (grille CAD) en mémoire ou en cache local `parquet/csv` régénérable, jamais à la place des originaux | Séparation brut/dérivé |
+
+## 12. Données ESG (audit V3, 2026-11-14)
+
+- **Colonnes des CSV officiels** : `assets_universe.csv` (asset_id, ticker, name, asset_class, market, currency, sector), `prices_daily.csv`, `corporate_actions.csv`, `fx_usdcad_daily.csv`, `macro_rates.csv`, `sources_metadata.csv` : **aucune colonne ESG** (note, controverse, exclusion, empreinte carbone, etc.). Une recherche textuelle dans tous les fichiers ne trouve que l'étiquette « ESG-screened » du FNB ESGV (nom et champ `sector`) et les mentions du README selon lesquelles aucune cote ESG, nouvelle ni donnée fondamentale n'est fournie.
+- **Conséquence** : la performance ESG d'une entreprise ne peut pas être déduite des données officielles, et elle n'est pas déduite du secteur, de la volatilité ou du rendement.
+- **Sources externes ajoutées** (fichier `config/esg_sources.yaml`, avec URL, date de consultation, portée, méthode, limites et conditions) : liste d'exclusion et d'observation de la Banque de Norvège (NBIM) ; description par Vanguard du filtre du FNB ESGV (niveau du fonds). Détails, résultats et limites : DECISIONS.md, section 0 quater.
+- **Couverture** : 20 actions individuelles cherchées dans la liste NBIM (2 y figurent : CNQ.TO exclue, TD.TO sous observation) ; aucun FNB n'est décomposé ; GLD, BTC-USD, ETH-USD et TLT sont « non applicables » avec justification ; aucun score.

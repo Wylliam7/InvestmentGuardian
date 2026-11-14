@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
-from conftest import StepModel
+from conftest import StepModel, expected_compare
 from guardian.agent.agent import GuardianAgent
 from guardian.agent.tools import SessionContext, build_tools
 from guardian.agent.tracer import Tracer
@@ -60,7 +60,7 @@ def test_tool_check_profile_constraints_respects_requested_profile(real_service)
 # ------------------------------------------------------------------ 3. quatre portefeuilles
 def test_four_presets_are_valid_exact_and_use_official_assets(real_service):
     presets = load_presets()
-    assert tuple(presets) == EXPECTED_PRESET_IDS and len(presets) == 4
+    assert tuple(presets) == EXPECTED_PRESET_IDS and len(presets) == 6   # 4 de V1 + 2 de Mateo (V3)
     with open(resolve_data_dir() / "assets_universe.csv", newline="") as f:
         official = {r["ticker"] for r in csv.DictReader(f)}
     for pid, p in presets.items():
@@ -68,8 +68,8 @@ def test_four_presets_are_valid_exact_and_use_official_assets(real_service):
         assert sum(w.values()) == 100, pid                                                    # somme EXACTE (entiers)
         assert all(isinstance(v, int) and v > 0 for v in w.values()) and set(w) <= official, pid
     validate_presets(presets, real_service.bundle.universe.index, real_service.profiles)
-    for pid, p in presets.items():                                                            # chacun s'analyse pour les deux profils
-        for prof in ("robert", "amira"):
+    for pid, p in presets.items():                                                            # chacun s'analyse pour les trois profils
+        for prof in ("robert", "amira", "mateo"):
             res, rep = real_service.check({t: v / 100 for t, v in p["weights_pct"].items()}, prof)
             assert res.n_obs == 1228 and len(rep.findings) == 6
 
@@ -208,7 +208,7 @@ def test_get_profile_returns_official_profile_and_heuristic_thresholds(real_serv
     assert amira["status"] == "ok" and amira["profile"]["age"] == 26 and amira["profile"]["horizon_years_min"] == 15 and amira["is_active_profile"] is False
     assert amira["thresholds_are_heuristics"] is True and amira["heuristic_thresholds"]["R7"]["direction"] == "min"
     assert amira["heuristic_thresholds"]["R1"]["conflict"] == 0.35 and active["profile_id"] == "robert" and active["is_active_profile"] is True
-    bad = t[GP](profile_id="mateo")
+    bad = t[GP](profile_id="zzz")
     assert bad["status"] == "error" and "Profil inconnu" in bad["message"]
     assert [r.status for r in tracer.records] == ["ok", "ok", "error"] and tracer.records[0].arguments == {"profile_id": "Amira"}
     assert tracer.records[0].data_refs["profile_source"].endswith("p. 5")
@@ -220,7 +220,7 @@ def test_compare_scenarios_tool_matches_engine_and_requires_portfolio_b(real_ser
     ctx = SessionContext(NVDA40, "robert", weights_b=prudent)
     t, tracer = tools_by_name(real_service, ctx)
     out = t[CMP]()
-    assert out == {**real_service.compare(NVDA40, prudent, "robert").to_tool_dict(), "profile": real_service.profiles["robert"]}
+    assert out == expected_compare(real_service, NVDA40, prudent, "robert")
     assert out["differences_B_minus_A"]["annualized_volatility_pts"] < 0 and "no_winner_notice" in out
     ctx.weights_b = None
     err = t[CMP]()
@@ -236,7 +236,7 @@ def test_agent_uses_get_profile_and_compare_scenarios_with_faithful_trace(real_s
     tr = ag.ask("Compare A et B pour Robert.")
     by = {r.tool: r for r in tr.tool_records}
     assert sorted(by) == [CMP, GP] and all(r.status == "ok" and r.turn == 1 for r in tr.tool_records) and not tr.withheld
-    assert by[CMP].result == {**real_service.compare(NVDA40, prudent, "robert").to_tool_dict(), "profile": real_service.profiles["robert"]}
+    assert by[CMP].result == expected_compare(real_service, NVDA40, prudent, "robert")
     assert tr.context["weights_a_pct"]["NVDA"] == 40.0 and tr.context["weights_b_pct"]["GLD"] == 10.0 and tr.context["profile_id"] == "robert"
 
 

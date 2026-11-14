@@ -1,10 +1,13 @@
 """Composants d'affichage Streamlit de V2 (aucun calcul financier : tout vient du moteur et des modules `explain`)."""
 from __future__ import annotations
 
+import datetime as dt
+
 import streamlit as st
 
 from guardian.explain.cards import Card
-from guardian.explain.format import fr, pct, pct_value
+from guardian.explain.esg_view import build_references_from_tool_result
+from guardian.explain.format import fr, fr_date, pct, pct_value
 from guardian.explain.summary import PrioritySummary
 from guardian.explain.trace_view import summary_lines
 
@@ -19,6 +22,8 @@ def render_card(card: Card) -> None:
         st.markdown(f"#### {card.headline}")
         st.markdown(card.measure)
         st.markdown(card.why)
+        if card.note:
+            st.info(card.note)
         st.caption(card.precision)
         with st.expander("Comprendre ce calcul"):
             st.markdown(f"**Comment ce résultat est obtenu.** {card.how}")
@@ -140,6 +145,9 @@ def render_request(t, service, select_profile_cb, active_profile: str, show_fact
             st.warning(t.caveat)
         st.markdown("**Réponse de l'assistant IA** — une interprétation générée par Nova 2 Lite. Les chiffres viennent des outils financiers (voir plus bas) :")
         st.markdown(t.text)
+        esg_rec = next((r for r in t.tool_records if r.tool == "check_esg_preferences" and r.status == "ok"), None)
+        if esg_rec is not None:
+            render_esg_references(build_references_from_tool_result(esg_rec.result))
         if show_facts:
             render_facts_used(t)
     render_how_answered(t, service.profiles, active_profile)
@@ -149,3 +157,114 @@ def render_request(t, service, select_profile_cb, active_profile: str, show_fact
     st.caption(f"Requête n° {t.turn} · {len(t.tool_records)} appel(s) d'outil dans cette requête ({n_ok} réussi(s)) · "
                f"{t.cycles if t.cycles is not None else '?'} cycle(s) interne(s) du modèle · {t.duration_s} s · "
                f"jetons : {t.usage.get('inputTokens', '?')} entrée / {t.usage.get('outputTokens', '?')} sortie")
+
+
+# ----------------------------------------------------------------------------- préférences ESG (V3)
+def render_reference(ref: dict) -> None:
+    """Lien de source : cliquable seulement s'il provient d'une URL vérifiée et enregistrée ; sinon « Référence à vérifier » (aucun lien)."""
+    if ref.get("url"):
+        st.markdown(f"[{ref['link_label']}]({ref['url']})")
+    else:
+        st.markdown(f"**{ref['link_label']}**")
+    st.caption(ref["link_note"])
+
+
+def render_esg_references(refs: dict | None) -> None:
+    """Références ESG sous une réponse de l'assistant : générées depuis les données structurées du moteur, jamais depuis le texte du modèle."""
+    if not refs or not (refs["findings"] or refs["search_scope"] or refs["fund_verification"]):
+        return
+    with st.container(border=True):
+        st.markdown("**Références ESG utilisées dans cette réponse** (générées par l'application à partir des résultats de l'outil ESG, pas par le modèle)")
+        for f in refs["findings"]:
+            tag = "🟠" if f["kind"] == "documented" else "🟡"
+            st.markdown(f"{tag} **{f['ticker']}** · {f['category_label']} · source : {f['source_name']} · décision : {f['decision_label']} · "
+                        f"date de la décision : {f['published_fr']}")
+            render_reference(f)
+        for sc in refs["search_scope"]:
+            names = ", ".join(x["ticker"] for x in sc["not_found"])
+            st.markdown(f"🔵 Cherchés et non trouvés dans {sc['reference']['source_name']} (consultée le {fr_date(dt.date.fromisoformat(sc['consulted_on']))}) : {names}.")
+            st.caption(sc["notice"])
+            render_reference(sc["reference"])
+        fv = refs["fund_verification"]
+        if fv:
+            st.markdown(f"⚪ FNB non évaluables ({', '.join(fv['tickers'])}) : {fv['statement']}")
+
+def render_esg_section(view: dict) -> None:
+    """Section « Mes préférences ESG » : séparée des risques financiers, jamais fusionnée en un score."""
+    if not view["applicable"]:
+        st.info(view["message"])
+        return
+    st.markdown(view["intro"])
+    icon, color = view["state_icon"]
+    with st.container(border=True):
+        st.markdown(f"{icon} :{color}[**{view['state_label']}**]")
+        st.markdown("**Préférences ESG déclarées (cas officiel du Datathon)**")
+        for p_ in view["preferences"]:
+            st.markdown(f"- {p_}")
+        cols = st.columns(len(view["coverage"]))
+        for col, c in zip(cols, view["coverage"]):
+            col.metric(c["label"], pct_value(100 * c["value"]), help=c["help"], border=True)
+        st.markdown(view["coverage_summary"])
+    st.markdown("#### Ce que nous savons, ligne par ligne")
+    import pandas as pd
+    st.dataframe(pd.DataFrame(view["rows"]).drop(columns=["Symbole"]), hide_index=True, width="stretch")
+    for key, title, icon in (("controversies", "Informations documentées à examiner (critère lié à la préférence déclarée)", "🟠"),
+                             ("complementary", "Information complémentaire documentée (hors critère déclaré)", "🟡")):
+        if view.get(key):
+            st.markdown(f"#### {title}")
+            for c in view[key]:
+                with st.container(border=True):
+                    st.markdown(f"{icon} **{c['ticker']}** · {c['category_label']} ({pct_value(100 * c['weight'])} du portefeuille)")
+                    st.markdown(c["headline"])
+                    st.markdown(c["link"])
+                    st.caption(c["caution"])
+                    ref = c["reference"]
+                    st.markdown(f"**Source :** {ref['source_name']} · **Type de décision :** {ref['decision_label']} · "
+                                f"**Date de la décision :** {ref['published_fr']}")
+                    render_reference(ref)
+    if view.get("search_scope"):
+        st.markdown("#### Titres cherchés et non trouvés : périmètre de la recherche")
+        for sc in view["search_scope"]:
+            with st.container(border=True):
+                listing = ", ".join(f"{x['ticker']} ({pct_value(x['weight_pct'])})" for x in sc["not_found"])
+                st.markdown(f"🔵 {listing} : cherchés dans **{sc['reference']['source_name']}**, consultée le {fr_date(dt.date.fromisoformat(sc['consulted_on']))}, "
+                            f"sans correspondance ({pct_value(sc['weight_pct'])} du portefeuille).")
+                st.caption(f"Périmètre de la source : {sc['scope']}")
+                st.markdown(sc["notice"])
+                render_reference(sc["reference"])
+    fv = view.get("fund_verification")
+    if fv:
+        st.markdown("#### FNB non évaluables")
+        with st.container(border=True):
+            st.markdown(f"⚪ {', '.join(fv['tickers'])} ({pct_value(fv['weight_pct'])} du portefeuille) : {fv['statement']}")
+            for n in fv["fund_level_notes"]:
+                st.caption(f"Information du fonds {n['ticker']} (déclarée par l'émetteur, pas une vérification des positions) : {n['note']}")
+                render_reference(n["reference"])
+    st.markdown("#### Exposition par ligne et exposition sous-jacente des FNB")
+    st.markdown(view["line_vs_underlying"]["line"])
+    st.markdown(view["line_vs_underlying"]["underlying"])
+    with st.expander("Comment lire ces résultats, et comment vérifier"):
+        for title, text in view["distinctions"]:
+            st.markdown(f"- **{title}** : {text}")
+        st.markdown("**Pour vérifier vous-même :**")
+        for h in view["how_to_verify"]:
+            st.markdown(f"- {h}")
+    st.caption(view["no_score_notice"])
+    with st.expander("Détails techniques ESG (sources, dates, règles appliquées)"):
+        st.markdown(f"Version des données ESG : `{view['data_version']}`")
+        for s in view["sources"]:
+            st.markdown(f"**{s['title']}** — {s['publisher']}  \n`{s['id']}` · consultée le {fr_date(dt.date.fromisoformat(s['consulted_on']))} · {s['url']}")
+            st.markdown(f"Type de lien : `{s['url_kind']}` · statut : `{s['url_status']}`" + (f" (vérifié le {s['url_verified_on']})" if s.get("url_verified_on") else " (non vérifié : affiché « Référence à vérifier »)"))
+            st.markdown(f"Nature : {s['nature']}")
+            st.markdown(f"Portée : {s['scope']}")
+            st.markdown(f"Méthode de consultation : {s['retrieval_method']}")
+            st.markdown("Limites : " + " ".join(f"• {x}" for x in s["limits"]))
+            st.caption(f"Conditions d'utilisation : {s['terms']}")
+        if not view["sources"]:
+            st.markdown("Aucune source n'a été utilisée pour ce portefeuille.")
+        st.markdown("**Incertitudes**")
+        for u in view["uncertainties"]:
+            st.markdown(f"- {u}")
+        st.markdown("**Règles appliquées**")
+        for r in view["rules_applied"]:
+            st.markdown(f"- {r}")

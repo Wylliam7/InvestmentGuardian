@@ -39,3 +39,31 @@ profiles:
     source: "Datathon - Case Officiel 2026 FR.pdf, p. 5"
     # Contrainte qualitative officielle : affichée à titre d'information (R10), sans seuil en V1.
     show_sector_context: true
+  mateo:
+    display_name: "Mateo"
+    age: 41
+    occupation: "Gestionnaire des opérations"
+    situation: "En couple, père de deux enfants."
+    experience: "Intermédiaire"
+    risk_profile_label: "Modéré"
+    horizon_years_min: 8
+    horizon_years_max: 12
+    objective: "Faire croître son capital de façon équilibrée à moyen et à long terme."
+    preferences:
+      - "Accorde une grande importance aux facteurs ESG."
+      - "Souhaite éviter les entreprises liées à des controverses environnementales ou sociales importantes."
+      - "Recherche un équilibre entre potentiel de croissance et stabilité."
+      - "Ouvert aux technologies émergentes si elles correspondent à son profil de risque."
+      - "Peu intéressé par les placements hautement spéculatifs."
+    persona_test: "Le système sait-il intégrer autre chose que le rendement et le risque ?"
+    source: "Datathon - Case Officiel 2026 FR.pdf, p. 6"
+    show_sector_context: false
+    # Préférences ESG déclarées (formulations officielles). Le module ESG ne vérifie QUE ce qui est écrit ici.
+    esg_preferences:
+      importance: "Accorde une grande importance aux facteurs ESG."
+      criteria:
+        - id: avoid_significant_controversies
+          official_wording: "Souhaite éviter les entreprises liées à des controverses environnementales ou sociales importantes."
+          direct_dimensions: ["E", "S"]       # environnemental, social : correspondent à la formulation officielle
+          indirect_dimensions: ["G"]          # gouvernance : relève de l'intérêt général pour l'ESG, pas de la formulation stricte
+

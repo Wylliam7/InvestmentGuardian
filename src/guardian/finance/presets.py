@@ -9,7 +9,8 @@ from guardian.data.loader import REPO_ROOT
 from guardian.finance.builder import parse_weight_rows, rows_from_weights
 
 PRESETS_PATH = REPO_ROOT / "config" / "presets.yaml"
-EXPECTED_PRESET_IDS = ("robert_prudent", "robert_nvda_40", "amira_croissance", "amira_tech_crypto")
+EXPECTED_PRESET_IDS = ("robert_prudent", "robert_nvda_40", "amira_croissance", "amira_tech_crypto",
+                       "mateo_croissance_equilibree", "mateo_actions_canadiennes")
 
 
 class PresetError(Exception):

@@ -262,3 +262,20 @@ Aucune dépendance à Streamlit, à AWS ou à l'IA. Elle transforme les résulta
 | `glossary.py`, `format.py` | Termes, info-bulles, formats français (virgule, dates) |
 
 `app/components.py` ne contient que de l'affichage. Le bouton « Explique-moi mes risques avec l'IA » appelle `GuardianAgent.ask(question, task=…, required_tools=…, kind="explain_risks")` : même agent, même verrou, même journal ; les outils obligatoires sont vérifiés après coup.
+
+## 15. Module ESG et profil Mateo (V3)
+
+```
+config/esg_sources.yaml ──► esg/data.py (validation : provenance complète, tickers connus, justifications)
+                                   │
+profil (esg_preferences) ──────────┼──► esg/engine.py : evaluate_esg() ──► EsgReport (états, couverture en poids, exposition par ligne / FNB, sources, incertitudes)
+poids du portefeuille ─────────────┘                                          │
+                                                                              ├──► explain/esg_view.py ──► section « Mes préférences ESG » (Streamlit)
+                                                                              └──► outil check_esg_preferences ──► agent (même agent, mêmes garde-fous)
+```
+
+- Le module ESG est **séparé** du Guardian Check financier : aucune dépendance entre les deux, aucun score commun. Il ne s'applique qu'aux profils ayant des `esg_preferences` (Mateo) ; sinon il retourne « non applicable pour ce profil ».
+- Cinq outils pour l'agent : `get_profile`, `evaluate_portfolio`, `check_profile_constraints`, `compare_scenarios`, `check_esg_preferences`. Une question sur l'ESG exige que ce dernier ait réussi dans la requête (`asks_about_esg`), sinon la réponse est retenue.
+- Contrôle de cohérence des pourcentages (`unmatched_percentages`) : avertissement visible si un pourcentage du texte ne figure dans aucun résultat d'outil de la requête ; ne détecte pas une coïncidence numérique.
+- Trace : `data_refs` des enregistrements de `check_esg_preferences` contient les sources ESG (identifiant, date de consultation, URL) et la version des données ; le niveau 1 de l'explicabilité décrit l'appel et les sources en français simple, le niveau 2 conserve le JSON complet.
+- **V3.1.** L'état `COMPLEMENTARY` (relevance « indirect ») sépare l'information complémentaire (ex. observation de gouvernance) du critère déclaré ; `EsgReport.categories` regroupe par décision × dimension × pertinence, chacune avec son poids, sans addition. `explain/funds.py::fund_exposure` ajoute le contexte FNB aux sorties d'outils (`fund_exposure`) et aux cartes R1/R7 (`Card.note`), sans toucher au moteur financier.

@@ -25,6 +25,7 @@ OUTILS
 - evaluate_portfolio : métriques historiques en CAD du portefeuille A ou B.
 - check_profile_constraints : Guardian Check d'un portefeuille pour un profil. N'utilise un profile_id différent du profil actif QUE si l'utilisateur nomme explicitement ce profil dans sa question ; sinon laisse profile_id vide. Le système refuse les autres profils.
 - compare_scenarios : comparaison A/B sur la même période (exige qu'un portefeuille B soit sélectionné).
+- check_esg_preferences : cohérence d'un portefeuille avec les préférences ESG DÉCLARÉES d'un profil (module distinct du Guardian Check financier).
 
 RÈGLES ABSOLUES
 1. Pour toute question sur un portefeuille, un risque ou un profil, appelle les outils pertinents AVANT de répondre, à chaque question : chaque question est traitée seule. Ne fournis jamais de poids aux outils. Un bloc [CONTEXTE DE L'INTERFACE] précède la question : il indique le profil actif et si un portefeuille B est défini. Si l'utilisateur demande de comparer ou de mettre en regard deux allocations et que B est défini, appelle compare_scenarios.
@@ -35,16 +36,31 @@ RÈGLES ABSOLUES
 6. L'historique décrit le passé (2021-11-12 au 2026-11-12). Ne prédis aucun rendement futur et ne dis pas qu'une performance passée se répétera.
 7. Ne donne aucun conseil financier personnalisé et ne propose aucune transaction. Ne dis pas qu'un portefeuille est « meilleur » ou « le bon choix » : décris des compromis historiques entre rendement et risque.
 8. Formule avec prudence. Écris par exemple « présente un conflit potentiel avec les objectifs déclarés de Robert selon les seuils heuristiques du prototype », jamais « est incompatible avec Robert » ni « objectivement risqué ». Ne présume pas qu'une baisse historique dépasse la tolérance personnelle réelle de l'investisseur.
-9. Structure ta réponse en quatre parties courtes : (a) Faits historiques calculés ; (b) Seuils heuristiques et constats du Guardian Check ; (c) Objectifs déclarés du persona : cite UNIQUEMENT le champ « profile » retourné par un outil (age, horizon, risque, objectif, préférences), sans rien ajouter ni reformuler en chiffres ; si tu ne l'as pas, appelle get_profile ; (d) Interprétation (ton avis, présenté comme tel). Mentionne au moins une limite (biais du survivant, fenêtre unique de cinq ans, FNB non décomposés).
-10. Si la question sort du périmètre de tes outils, dis-le au lieu de répondre de mémoire."""
+9. Structure ta réponse en quatre parties courtes : (a) Faits historiques calculés ; (b) Seuils heuristiques et constats du Guardian Check ; (c) Objectifs déclarés du persona : cite UNIQUEMENT le champ « profile » retourné par un outil (age, horizon, risque, objectif, préférences), sans rien ajouter ni reformuler en chiffres ; si tu ne l'as pas, appelle get_profile ; (d) Interprétation (ton avis, présenté comme tel). Mentionne au moins une limite (biais du survivant, fenêtre unique de cinq ans, FNB non décomposés). Si un volet n'a pas été examiné par un outil dans CETTE réponse (par exemple les constats financiers pour une question purement ESG), écris « non examiné dans cette réponse » au lieu de le remplir : n'affirme jamais qu'un repère financier est ou n'est pas franchi sans avoir appelé check_profile_constraints.
+10. Si la question sort du périmètre de tes outils, dis-le au lieu de répondre de mémoire.
+12. Ne prête au persona aucune émotion, aucun besoin ni aucune situation absents du profil retourné par l'outil (par exemple anxiété, besoin de liquidités) : cite seulement ses objectifs et préférences officiels.
+11. ESG : pour toute question sur l'ESG, les controverses, la durabilité ou l'éthique, appelle check_esg_preferences. N'invente JAMAIS une controverse, une note ESG, un score, un classement ou une source : cite uniquement ce que l'outil retourne (états, couverture, sources avec leur date). Distingue toujours « controverse documentée à examiner », « aucune controverse identifiée dans les sources consultées » et « information insuffisante » : une absence de résultat n'est pas une preuve d'absence de controverse. Si l'état global est « information insuffisante », dis que tu ne peux pas confirmer que le portefeuille respecte toutes les préférences ESG, résume ce qui est connu et ce qui reste à vérifier, sans présenter la part non évaluée comme conforme. N'écris jamais qu'un actif ou un portefeuille est « durable », « éthique » ou « conforme ESG ». Une décision d'exclusion ou d'observation est celle de la source, pas un jugement de culpabilité. Ne combine jamais risque financier et ESG en une note unique, et traite-les dans des parties séparées. Les FNB ne sont pas décomposés : n'affirme rien sur leurs entreprises sous-jacentes. Ne qualifie jamais une « information insuffisante » de « conflit » : un conflit potentiel suppose une information documentée ou un repère franchi. Recopie les pourcentages de couverture exactement tels que l'outil les retourne (ne les additionne pas, ne les arrondis pas autrement) et cite le nombre exact de sources de la liste « sources ».
+13. Distinctions ESG obligatoires. Exclusion et mise sous observation sont deux décisions différentes : une observation n'est pas une exclusion et est moins forte. Environnement ou social et gouvernance sont deux dimensions différentes. Utilise les champs structurés de l'outil : `documented_categories` (critère lié à la préférence déclarée, par exemple une exclusion environnementale) et `complementary_information` (hors critère déclaré, par exemple une observation de gouvernance ou de crime financier). Pour chaque catégorie, nomme la décision (decision_label), la dimension (dimension_label), le poids (weight_pct) et les tickers, avec la source et la date de publication de la décision. Présente l'information complémentaire séparément, comme information complémentaire, JAMAIS comme un conflit environnemental ou social ni comme un conflit avec les préférences. N'additionne JAMAIS des catégories différentes en un seul pourcentage (n'écris pas « 30 % en conflit avec les préférences ESG ») ; recopie `categories_summary` ou les poids de chaque catégorie. N'écris aucune affirmation sans preuve : si le champ n'existe pas, ne l'invente pas. Cite le critère invoqué tel que retourné (criterion_fr) sans le reformuler en accusation, en fait établi ou en jugement : écris « la source a placé X sous observation pour le critère : … », jamais « X est accusée de … ». Le module ESG n'utilise aucun seuil : n'écris pas « seuils heuristiques » à propos de l'ESG. Une ligne « non applicable » (par exemple l'or) n'a pas été « vérifiée » : ne la compte pas parmi les lignes vérifiées.
+14. FNB. Une position de X % dans un FNB diversifié n'est pas équivalente à une position de X % dans une entreprise individuelle : un FNB détient plusieurs titres. Quand tu parles de concentration ou de la plus grande position, regarde `fund_exposure` : si `largest_position_is_fund` est vrai, ou si des FNB sont détenus, reprends sa `pedagogical_note` (le repère s'applique pareillement à une action et à un FNB, ce qui peut surestimer la concentration réelle) et rappelle que la diversification sous-jacente des FNB n'est pas mesurée. Ne change ni un poids, ni un indice, ni un seuil, ni un statut : seul le commentaire change."""
 
 
 EXPLAIN_RISKS_LABEL = "Explique-moi mes risques avec l'IA"
 EXPLAIN_RISKS_REQUIRED = ("evaluate_portfolio", "check_profile_constraints")
 
 
-def explain_risks_task(profile_name: str) -> str:
+EXPLAIN_ESG_REQUIRED = ("check_esg_preferences",)
+
+
+def explain_risks_task(profile_name: str, has_esg: bool = False) -> str:
     """Consigne interne du bouton « Explique-moi mes risques avec l'IA » (même agent, même mécanisme que l'assistant)."""
+    esg = ((" Ce profil a des préférences ESG : appelle aussi check_esg_preferences et présente-les dans une section séparée **Préférences ESG** "
+            "(état global, part du portefeuille vérifiée, part non évaluable, sources consultées avec leur date), sans les combiner avec les risques "
+            "financiers et sans jamais donner de note. Distingue exclusion et observation, environnement/social et gouvernance : présente chaque catégorie "
+            "documentée séparément avec son poids, et l'information complémentaire (hors critère déclaré) à part ; n'additionne jamais les catégories en un "
+            "seul pourcentage « en conflit ». N'écris jamais que le portefeuille est durable ou conforme ESG.") if has_esg else "")
+    etf = (" Si la plus grande position est un FNB (fund_exposure.largest_position_is_fund), précise qu'une position de X % dans un FNB diversifié "
+           "n'est pas équivalente à une position de X % dans une entreprise individuelle et que la diversification sous-jacente des FNB n'est pas mesurée : "
+           "reprends dans **Limites** la fund_exposure.pedagogical_note, sans changer un poids ni un statut.")
     return (
         f"TÂCHE : explique à une personne non spécialiste, en français simple et en 250 mots maximum, les deux ou trois principaux risques du "
         f"portefeuille A pour {profile_name}. Appelle evaluate_portfolio et check_profile_constraints (et get_profile si tu as besoin du profil). "
@@ -56,7 +72,7 @@ def explain_risks_task(profile_name: str) -> str:
         "ni un repère, ni un statut. Évite le jargon : n'écris ni « seuil de conflit », ni « drawdown », ni « HHI », ni « règle R1 » ; "
         "écris « repère de vigilance » (ou « repère pédagogique »), « plus forte baisse historique » et « fluctuations ». "
         "Regroupe les constats liés : si la même position pèse lourd, est très fluctuante et explique les fluctuations du portefeuille, "
-        "présente-les comme UN enjeu et non comme trois risques indépendants. N'annonce jamais plus d'enjeux qu'il n'en existe réellement.")
+        "présente-les comme UN enjeu et non comme trois risques indépendants. N'annonce jamais plus d'enjeux qu'il n'en existe réellement." + etf + esg)
 
 
 @dataclass
@@ -77,6 +93,7 @@ class TurnResult:
     started_at: str = ""
     caveat: str | None = None          # avertissement affiché avec la réponse
     context: dict = field(default_factory=dict)   # profil et portefeuilles A/B réellement utilisés pour cette requête
+    unmatched_numbers: tuple = ()      # pourcentages du texte absents des résultats d'outils (contrôle de cohérence)
     clarification: str | None = None   # demande de précision à l'utilisateur (aucun appel au modèle ni aux outils)
     clarification_profiles: tuple = ()  # profils à proposer de sélectionner
     kind: str = "question"                # "question" (assistant) ou "explain_risks" (bouton « Explique-moi mes risques »)
@@ -147,6 +164,53 @@ def clarification_message(conflict: dict, profiles: dict) -> str:
     return (f"Votre question demande une analyse pour **{names}**, mais le profil sélectionné dans l'interface est **{active}**. "
             f"Sélectionnez {names} dans le sélecteur de profil, ou reformulez votre question pour {active}. "
             "Aucune analyse n'a été lancée et aucun outil n'a été appelé.")
+
+
+_PCT_RE = re.compile(r"(?<![\d.,])[−-]?(\d+(?:[.,]\d+)?)\s*%")
+
+
+def _collect_numbers(obj, out: set) -> None:
+    if isinstance(obj, bool):
+        return
+    if isinstance(obj, (int, float)):
+        out.add(abs(float(obj)))
+    elif isinstance(obj, dict):
+        for v in obj.values():
+            _collect_numbers(v, out)
+    elif isinstance(obj, (list, tuple)):
+        for v in obj:
+            _collect_numbers(v, out)
+
+
+def unmatched_percentages(text: str, records: list) -> list[str]:
+    """Pourcentages cités dans le texte qui ne figurent dans aucun résultat d'outil de CETTE requête (à l'arrondi affiché près).
+
+    Contrôle de cohérence, pas une preuve : 0 % et 100 % sont ignorés ; un pourcentage calculé par le modèle (somme, complément) est signalé.
+    """
+    avail: set = set()
+    for r in records:
+        if r.status == "ok" and r.result:
+            _collect_numbers(r.result, avail)
+    candidates = set(avail) | {v * 100 for v in avail if v <= 1.5}          # les seuils et poids sont parfois des fractions
+    bad = []
+    for m in _PCT_RE.finditer(text or ""):
+        raw = m.group(1)
+        val = float(raw.replace(",", "."))
+        if val in (0.0, 100.0):
+            continue
+        d = len(raw.split(",")[1]) if "," in raw else (len(raw.split(".")[1]) if "." in raw else 0)
+        tol = 0.5 * 10 ** (-d) + 1e-9
+        if not any(abs(c - val) <= tol for c in candidates):
+            bad.append(m.group(0).strip().lstrip("−-").strip())
+    return list(dict.fromkeys(bad))
+
+
+_ESG_RE = re.compile(r"\besg\b|controvers|durab|ethiq")
+
+
+def asks_about_esg(question: str) -> bool:
+    """Vrai si la question parle d'ESG, de controverses, de durabilité ou d'éthique (insensible à la casse et aux accents)."""
+    return bool(_ESG_RE.search(_norm(question or "")))
 
 
 _RANGE_RE = re.compile(r"(\d{1,2})\s*(?:-|–|—|à)\s*(\d{1,2})\s*ans")
@@ -249,6 +313,8 @@ class GuardianAgent:
           ne peut jamais fonder la réponse d'une nouvelle requête. La validation n'utilise que les outils
           exécutés pendant CETTE requête, quel que soit le nombre de cycles internes de Strands.
         """
+        if asks_about_esg(question) and "check_esg_preferences" not in required_tools:
+            required_tools = (*required_tools, "check_esg_preferences")     # toute réponse sur l'ESG doit s'appuyer sur l'outil ESG
         with self._ask_lock:
             tr = self._ask_locked(question, task, tuple(required_tools))
             tr.kind = kind
@@ -309,6 +375,7 @@ class GuardianAgent:
             error = map_error(e)
         records = self.tracer.for_turn(turn)
         withheld, reason, caveat = False, None, None
+        unmatched_list: list = []
         if error is not None:
             withheld, reason = True, "L'appel à l'agent a échoué : aucune réponse n'est affichée."
             text = None
@@ -316,6 +383,12 @@ class GuardianAgent:
             withheld, reason, caveat = evaluate_turn(text or "", records, sdk_delta, self.service.profiles)
             if not (text or "").strip():
                 withheld, reason = True, "Le modèle a retourné une réponse vide."
+            unmatched = unmatched_percentages(text, records) if (text and not withheld and records) else []
+            unmatched_list = unmatched
+            if unmatched:
+                note = ("Attention : ces pourcentages du texte n'ont pas été retrouvés tels quels dans les résultats des outils de cette requête : "
+                        f"{', '.join(unmatched)}. Ils peuvent avoir été calculés ou arrondis par le modèle ; fiez-vous aux chiffres affichés par l'application.")
+                caveat = f"{caveat} {note}" if caveat else note
             missing = [n for n in required_tools if not any(r.tool == n and r.status == "ok" for r in records)]
             if not withheld and missing:
                 withheld = True
@@ -327,6 +400,6 @@ class GuardianAgent:
         tr = TurnResult(turn=turn, question=question, text=text, withheld=withheld, withheld_reason=reason,
                         error=error, tool_records=records, duration_s=round(time.perf_counter() - t0, 2),
                         model_id=self.model_id, region=self.region, usage=usage, cycles=cycles,
-                        started_at=started, caveat=caveat, context=context)
+                        started_at=started, caveat=caveat, context=context, unmatched_numbers=tuple(unmatched_list))
         self.turns.append(tr)
         return tr

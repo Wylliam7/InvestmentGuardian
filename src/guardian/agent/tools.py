@@ -13,6 +13,7 @@ from strands import tool
 
 from guardian.agent.service import GuardianService
 from guardian.agent.tracer import Tracer, digest, sanitize
+from guardian.explain.funds import fund_exposure
 
 ERROR_INSTRUCTION = ("L'outil a échoué. N'avance aucun chiffre ni conclusion financière ; "
                      "indique seulement que l'analyse n'a pas pu être réalisée et rapporte le message d'erreur.")
@@ -40,6 +41,9 @@ def _data_refs(result: dict) -> dict:
             "rules_config_version": result.get("config_version") or result.get("rules_config_version")}
     if result.get("profile", {}).get("source"):
         refs["profile_source"] = result["profile"]["source"]
+    if prov.get("esg_sources") is not None:
+        refs["esg_sources"] = prov["esg_sources"]
+        refs["esg_data_version"] = prov.get("esg_data_version")
     return refs
 
 
@@ -58,6 +62,11 @@ def _run(tracer: Tracer, ctx: SessionContext, name: str, arguments: dict, fn) ->
         tracer.add(tool=name, arguments=arguments, status="error",
                    duration_ms=round((time.perf_counter() - t0) * 1000, 2), error=msg)
         return {"status": "error", "tool": name, "message": msg, "instruction": ERROR_INSTRUCTION}
+
+
+def _funds(service: GuardianService, res) -> dict:
+    """Contexte FNB (texte et indicateurs) : n'altère ni les poids, ni le HHI, ni les statuts."""
+    return fund_exposure(res.weights, service.bundle.universe, res.concentration.max_ticker, res.concentration.max_weight)
 
 
 def _profile(service: GuardianService, ctx: SessionContext, profile_id: str) -> str:
@@ -112,6 +121,7 @@ def build_tools(service: GuardianService, ctx: SessionContext, tracer: Tracer) -
         Retourne rendement cumulé et annualisé, volatilité annualisée, drawdown maximal, concentration,
         exposition par classe d'actifs et statistiques par actif, avec la provenance des données.
         Les portefeuilles sont déjà connus du système : ne fournis aucun poids.
+        `fund_exposure` indique les FNB détenus et rappelle que la diversification sous-jacente des FNB n'est pas mesurée.
 
         Args:
             portfolio: "A" (portefeuille principal) ou "B" (portefeuille de comparaison). Par défaut "A".
@@ -122,7 +132,9 @@ def build_tools(service: GuardianService, ctx: SessionContext, tracer: Tracer) -
 
         def run() -> dict:
             label, w = _portfolio(ctx, portfolio)
-            out = service.analyze(w, start_date or None, end_date or None).to_tool_dict()
+            res = service.analyze(w, start_date or None, end_date or None)
+            out = res.to_tool_dict()
+            out["fund_exposure"] = _funds(service, res)
             out["portfolio"] = label
             return out
 
@@ -153,7 +165,7 @@ def build_tools(service: GuardianService, ctx: SessionContext, tracer: Tracer) -
             out = report.to_dict()
             out.update({"profile": service.profiles[pid], "portfolio": label, "window": full["window"],
                         "weights_pct": full["weights_pct"], "metrics": full["metrics"], "concentration": full["concentration"],
-                        "provenance": res.provenance})
+                        "provenance": res.provenance, "fund_exposure": _funds(service, res)})
             return out
 
         return _run(tracer, ctx, "check_profile_constraints", args, run)
@@ -177,10 +189,41 @@ def build_tools(service: GuardianService, ctx: SessionContext, tracer: Tracer) -
             pid = _profile(service, ctx, profile_id)
             _, wa = _portfolio(ctx, "A")
             _, wb = _portfolio(ctx, "B")
-            out = service.compare(wa, wb, pid, start_date or None, end_date or None).to_tool_dict()
+            cmp_ = service.compare(wa, wb, pid, start_date or None, end_date or None)
+            out = cmp_.to_tool_dict()
+            out["portfolio_A"]["fund_exposure"] = _funds(service, cmp_.a)
+            out["portfolio_B"]["fund_exposure"] = _funds(service, cmp_.b)
             out["profile"] = service.profiles[pid]          # faits officiels du persona, à citer tels quels
             return out
 
         return _run(tracer, ctx, "compare_scenarios", args, run)
 
-    return [get_profile, evaluate_portfolio, check_profile_constraints, compare_scenarios]
+    @tool
+    def check_esg_preferences(profile_id: str = "", portfolio: str = "A") -> dict:
+        """Vérifie la cohérence d'un portefeuille fictif avec les préférences ESG DÉCLARÉES d'un profil (module déterministe, distinct du Guardian Check financier).
+
+        Retourne l'état global et par ligne (controverse documentée à examiner, aucune controverse identifiée dans les sources consultées,
+        information insuffisante, non applicable), la couverture des données en poids du portefeuille, l'exposition par ligne et celle des FNB,
+        les sources consultées (URL, date, limites), les incertitudes et les règles appliquées. Aucun score ESG n'existe : n'en invente jamais.
+        Les informations documentées sont séparées par catégorie (`documented_categories` : critère lié à la préférence ; `complementary_information` :
+        hors critère déclaré, par exemple gouvernance), chacune avec sa décision (exclusion ou observation), sa dimension (E, S ou G), son poids et ses tickers.
+        Ne jamais les additionner en un seul pourcentage « en conflit ».
+        Une absence de résultat n'est pas une preuve d'absence de controverse. Pour un profil sans préférences ESG déclarées, retourne « non applicable ».
+
+        Args:
+            profile_id: "robert", "amira" ou "mateo". Laisser vide pour le profil actif dans l'interface.
+            portfolio: "A" (portefeuille principal) ou "B" (portefeuille de comparaison). Par défaut "A".
+        """
+        args = {"profile_id": profile_id, "portfolio": portfolio}
+
+        def run() -> dict:
+            pid = _profile(service, ctx, profile_id)
+            label, w = _portfolio(ctx, portfolio)
+            out = service.check_esg(w, pid).to_dict()
+            out["portfolio"] = label
+            out["profile"] = service.profiles[pid]
+            return out
+
+        return _run(tracer, ctx, "check_esg_preferences", args, run)
+
+    return [get_profile, evaluate_portfolio, check_profile_constraints, compare_scenarios, check_esg_preferences]

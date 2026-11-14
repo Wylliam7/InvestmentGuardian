@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from guardian.explain.funds import fund_exposure
 from guardian.explain.format import asset_label, fr, fr_date, horizon_text, pct, pct_value
 from guardian.rules.engine import ATTENTION, CONFLIT, INFO, OK, GuardianReport
 
@@ -34,6 +35,7 @@ class Card:
     how: str                    # E. comprendre ce calcul
     limits: tuple
     advanced: dict = field(default_factory=dict)   # jargon et détails techniques (repliés dans l'interface)
+    note: str | None = None     # précision pédagogique (FNB) : ne change ni la mesure, ni le repère, ni le statut
 
 
 def diversification_sentence(result) -> str:
@@ -71,6 +73,7 @@ def build_cards(result, report: GuardianReport, profile: dict, universe, rules_c
     top = result.concentration.max_ticker
     top_label = asset_label(universe, top)
     cards: list[Card] = []
+    fx = fund_exposure(result.weights, universe, top, result.concentration.max_weight)
 
     def level(status):
         return LEVELS[status]
@@ -103,6 +106,7 @@ def build_cards(result, report: GuardianReport, profile: dict, universe, rules_c
         precision=(f"Notre outil considère qu'une position qui dépasse {pct_value(100 * fd.threshold_conflict)} mérite une vigilance importante "
                    f"pour le profil de {name}, et qu'au-delà de {pct_value(100 * fd.threshold_attention)} c'est un point de vigilance. {CALC_DISCLAIMER}"),
         how="Pour chaque position, on regarde sa part dans votre allocation, puis on retient la plus grande.",
+        note=fx["pedagogical_note"] if fx["has_funds"] and fx["largest_position_is_fund"] else None,
         limits=("Cette mesure regarde la part de chaque position. Un fonds qui détient plusieurs entreprises peut être plus diversifié qu'une action "
                 "individuelle, même si notre règle leur applique le même repère.",
                 "Elle ne tient pas compte des liens entre les actifs."),
@@ -188,6 +192,7 @@ def build_cards(result, report: GuardianReport, profile: dict, universe, rules_c
         precision=(f"Notre outil considère qu'une diversification équivalente à moins de {fr(fd.threshold_conflict, 0)} positions de poids égal mérite une vigilance "
                    f"importante pour {name}, et moins de {fr(fd.threshold_attention, 0)} un point de vigilance. {CALC_DISCLAIMER}"),
         how="On calcule 1 divisé par la somme des carrés des parts de chaque position (indice HHI). Quatre positions égales donnent 4.",
+        note=fx["pedagogical_note"] if fx["has_funds"] else None,
         limits=("Cette mesure compte des positions, pas leurs liens : deux actions très corrélées comptent pour deux.",
                 "Elle ne tient pas compte de la diversification interne des fonds (FNB) et n'est pas le nombre d'entreprises sous-jacentes."),
         advanced=adv(fd)))

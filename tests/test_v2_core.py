@@ -50,12 +50,24 @@ def test_financial_engine_rules_data_and_thresholds_are_untouched_since_v1():
     probe = subprocess.run(["git", "cat-file", "-t", V1_COMMIT], cwd=REPO, capture_output=True, text=True)
     if probe.returncode != 0:
         pytest.skip("commit V1 absent de ce dépôt")
-    diff = subprocess.run(["git", "diff", "--stat", V1_COMMIT, "--", "src/guardian/finance", "src/guardian/rules", "src/guardian/data",
-                           "config/guardian_rules.yaml", "config/profiles.yaml", "config/data_manifest.yaml"], cwd=REPO, capture_output=True, text=True)
-    assert diff.stdout.strip() == "", diff.stdout                                         # aucune modification du moteur, des règles, des seuils, des profils, des données
-    old = yaml.safe_load(subprocess.run(["git", "show", f"{V1_COMMIT}:config/guardian_rules.yaml"], cwd=REPO, capture_output=True, text=True).stdout)
-    cur = yaml.safe_load((REPO / "config" / "guardian_rules.yaml").read_text(encoding="utf-8"))
-    assert old["rules"] == cur["rules"] and old["volatile_asset_vol_threshold"] == cur["volatile_asset_vol_threshold"]
+    # le code de calcul (finance, règles, données) est identique à V1 ; V3 n'ajoute que des profils et des modules distincts
+    diff = subprocess.run(["git", "diff", "--stat", V1_COMMIT, "--", "src/guardian/finance/analysis.py", "src/guardian/finance/metrics.py",
+                           "src/guardian/finance/panel.py", "src/guardian/finance/portfolio.py", "src/guardian/finance/compare.py",
+                           "src/guardian/rules", "src/guardian/data", "config/data_manifest.yaml"], cwd=REPO, capture_output=True, text=True)
+    assert diff.stdout.strip() == "", diff.stdout
+    def old(path):
+        return yaml.safe_load(subprocess.run(["git", "show", f"{V1_COMMIT}:{path}"], cwd=REPO, capture_output=True, text=True).stdout)
+    cur_rules = yaml.safe_load((REPO / "config" / "guardian_rules.yaml").read_text(encoding="utf-8"))
+    old_rules = old("config/guardian_rules.yaml")
+    assert old_rules["volatile_asset_vol_threshold"] == cur_rules["volatile_asset_vol_threshold"]
+    for rid, rule in old_rules["rules"].items():
+        for prof, th in rule["thresholds"].items():                                         # seuils de Robert et d'Amira : valeurs identiques à V1
+            assert cur_rules["rules"][rid]["thresholds"][prof] == th, (rid, prof)
+        assert {k: v for k, v in cur_rules["rules"][rid].items() if k != "thresholds"} == {k: v for k, v in rule.items() if k != "thresholds"}
+    cur_profiles = yaml.safe_load((REPO / "config" / "profiles.yaml").read_text(encoding="utf-8"))["profiles"]
+    old_profiles = old("config/profiles.yaml")["profiles"]
+    for pid, prof in old_profiles.items():
+        assert cur_profiles[pid] == prof, pid                                               # profils Robert et Amira inchangés
 
 
 def test_official_csv_files_are_unchanged():
