@@ -41,7 +41,7 @@ def test_app_renders_engine_results_without_aws(monkeypatch, real_service):
     assert metrics["Rendement cumulé"] == f"{100 * res.cumulative_return:.1f} %"
     assert metrics["Volatilité annualisée"] == f"{100 * res.volatility:.1f} %"
     assert metrics["Drawdown maximal"] == f"{100 * res.drawdown.max_drawdown:.1f} %"
-    assert metrics["Plus grande position"].startswith("NVDA")
+    assert metrics["Rendement annualisé"] == f"{100 * res.annualized_return:.1f} %"
     assert any("Simulation éducative" in m.value for m in at.markdown)
     # le bouton de question : AWS est indisponible → erreur explicite, indicateurs conservés
     at.text_area[0].set_value("Pourquoi ce portefeuille pourrait-il être risqué pour Robert ?")

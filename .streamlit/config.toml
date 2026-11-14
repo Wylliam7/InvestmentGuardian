@@ -1,0 +1,5 @@
+# Thème de lisibilité. Les options serveur sont passées en ligne de commande.
+[theme]
+baseFontSize = 17
+metricValueFontSize = "2.3rem"
+headingFontSizes = ["3.4rem", "2.2rem", "1.65rem"]

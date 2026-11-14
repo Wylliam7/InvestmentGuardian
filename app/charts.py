@@ -37,6 +37,26 @@ def drawdown_figure(result: AnalysisResult) -> go.Figure:
     return _layout(fig, "Baisse depuis le dernier sommet (drawdown, %)", "%")
 
 
+B_COLOR = "#D68910"
+
+
+def comparison_performance_figure(a: AnalysisResult, b: AnalysisResult, label_a: str = "A", label_b: str = "B") -> go.Figure:
+    """Valeur normalisée (base 100) des portefeuilles A et B sur la MÊME grille de dates, en CAD."""
+    fig = go.Figure()
+    for res, name, color in ((a, label_a, PORTFOLIO_COLOR), (b, label_b, B_COLOR)):
+        v = res.value
+        fig.add_trace(go.Scatter(x=v.index, y=100.0 * v / v.iloc[0], name=name, line=dict(color=color, width=2.5)))
+    return _layout(fig, "Évolution historique comparée (base 100, CAD, même grille de dates)", "Valeur (base 100)")
+
+
+def comparison_drawdown_figure(a: AnalysisResult, b: AnalysisResult, label_a: str = "A", label_b: str = "B") -> go.Figure:
+    fig = go.Figure()
+    for res, name, color in ((a, label_a, PORTFOLIO_COLOR), (b, label_b, B_COLOR)):
+        dd = 100.0 * drawdown_series(res.value)
+        fig.add_trace(go.Scatter(x=dd.index, y=dd, name=name, line=dict(color=color, width=2)))
+    return _layout(fig, "Baisse depuis le dernier sommet (drawdown, %)", "%")
+
+
 def allocation_figure(result: AnalysisResult) -> go.Figure:
     tickers = list(result.weights)
     fig = go.Figure(go.Pie(labels=tickers, values=[100.0 * result.weights[t] for t in tickers], hole=0.55,

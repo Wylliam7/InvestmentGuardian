@@ -1,9 +1,73 @@
-# Portefeuilles fictifs prédéfinis (poids en pourcentage).
+# Portefeuilles fictifs prédéfinis (poids entiers en pourcentage ; chaque total = 100 exactement).
+# Simulations éducatives, pas des recommandations d'investissement.
+#
+# Méthode : poids définis d'après l'intention du scénario (voir DECISIONS.md, section « V1 »)
+# AVANT de consulter les résultats du Guardian Check ; ils n'ont pas été ajustés pour obtenir un diagnostic.
+# `profile_id` est le profil suggéré pour la démonstration ; l'utilisateur peut évaluer n'importe quel portefeuille
+# pour n'importe quel profil.
+# Scénarios proposés par défaut lorsqu'on sélectionne un profil (A = scénario de risque à examiner, B = alternative diversifiée).
+# Ce sont des suggestions : n'importe quelle allocation peut être évaluée pour n'importe quel profil.
+profile_defaults:
+  robert: {a: robert_nvda_40, b: robert_prudent}
+  amira: {a: amira_tech_crypto, b: amira_croissance}
+
 presets:
-  robert_nvda_40:
-    label: "Robert — tenté par NVIDIA (scénario V0)"
+  robert_prudent:
+    label: "Robert — Prudent et diversifié"
     profile_id: robert
+    description: >
+      Préservation du capital avec potentiel de croissance : obligations (35 %), actions canadiennes et américaines
+      d'entreprises établies, FNB larges et or. Aucune cryptomonnaie.
+    weights_pct:
+      XBB.TO: 15
+      ZST.TO: 10
+      AGG: 10
+      XIU.TO: 15
+      SPY: 10
+      RY.TO: 5
+      JNJ: 5
+      PG: 5
+      FTS.TO: 5
+      CNR.TO: 5
+      ENB.TO: 5
+      GLD: 10
+  robert_nvda_40:
+    label: "Robert — Tentation Nvidia"
+    profile_id: robert
+    description: >
+      Scénario de V0 : une entreprise très médiatisée et volatile à 40 %, complétée par un FNB obligataire et un FNB
+      d'actions canadiennes.
     weights_pct:
       NVDA: 40
       XBB.TO: 35
       XIU.TO: 25
+  amira_croissance:
+    label: "Amira — Croissance diversifiée"
+    profile_id: amira
+    description: >
+      Croissance à long terme avec exposition technologique (QQQ, NVDA, SHOP.TO) mais aussi financières, santé,
+      énergie, FNB larges, obligations et une petite part de Bitcoin.
+    weights_pct:
+      QQQ: 20
+      SPY: 20
+      XIU.TO: 15
+      NVDA: 10
+      SHOP.TO: 5
+      BTC-USD: 5
+      XBB.TO: 10
+      RY.TO: 5
+      JNJ: 5
+      XOM: 5
+  amira_tech_crypto:
+    label: "Amira — Concentration technologie et crypto"
+    profile_id: amira
+    description: >
+      Cas pédagogique : forte part de technologie et de cryptoactifs (NVDA, TSLA, QQQ, SHOP.TO, Bitcoin, Ether),
+      sans obligations. Sert à analyser les risques de concentration malgré une tolérance élevée.
+    weights_pct:
+      NVDA: 25
+      TSLA: 15
+      QQQ: 25
+      SHOP.TO: 5
+      BTC-USD: 20
+      ETH-USD: 10

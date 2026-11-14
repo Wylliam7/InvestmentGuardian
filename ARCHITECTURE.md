@@ -114,7 +114,7 @@ Statuts : `OK`, `ATTENTION`, `CONFLIT`, `INFO`. Les seuils viennent de `config/g
 
 ### 4.3 Couche 4 — Agent
 
-- **Outils exposés au modèle.** MVP : **quatre** (validé le 2026-11-14), avec schémas explicites ; chacun appelle L2/L3 et renvoie un JSON structuré. Les deux derniers sont reportés après le MVP.
+- **Outils exposés au modèle.** Quatre en V1 (`get_profile`, `evaluate_portfolio`, `check_profile_constraints`, `compare_scenarios`), avec schémas explicites ; chacun appelle L2/L3 et renvoie un JSON structuré. `evaluate_portfolio` et `check_profile_constraints` acceptent `portfolio` ("A" ou "B") ; `check_profile_constraints` et `get_profile` acceptent un `profile_id` (profil actif par défaut). Le contexte (profil actif, A, B) vient de `SessionContext`, mis à jour par l'interface à chaque exécution ; chaque requête reçoit en plus une note qui indique seulement quels portefeuilles sont définis (aucun poids). Les deux derniers outils de la liste initiale restent après MVP. **Profil par requête** : le profil actif et les profils nommés par l'utilisateur forment l'ensemble `allowed_profiles` reconstruit à chaque requête ; une question qui nomme un profil sans nommer le profil actif déclenche une demande de précision avant tout appel au modèle (`profile_conflict`), et un outil appelé avec un profil non autorisé échoue.
 
 | Outil | Rôle | Paramètres clés | Statut |
 |---|---|---|---|

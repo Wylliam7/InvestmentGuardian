@@ -32,3 +32,7 @@ class GuardianService:
     def check(self, weights: dict, profile_id: str, start=None, end=None) -> tuple[AnalysisResult, GuardianReport]:
         res = self.analyze(weights, start, end)
         return res, evaluate(res, profile_id, self.rules_cfg, self.profiles)
+
+    def compare(self, weights_a: dict, weights_b: dict, profile_id: str, start=None, end=None):
+        from guardian.finance.compare import compare_portfolios
+        return compare_portfolios(self, weights_a, weights_b, profile_id, start or None, end or None)

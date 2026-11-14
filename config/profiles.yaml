@@ -20,3 +20,22 @@ profiles:
       - "Peut être tenté par une entreprise très médiatisée, même si elle est plus risquée que ce qu'il recherche habituellement."
     persona_test: "Le système sait-il remettre en question une demande incohérente avec le profil ?"
     source: "Datathon - Case Officiel 2026 FR.pdf, p. 7"
+    show_sector_context: false
+  amira:
+    display_name: "Amira"
+    age: 26
+    occupation: "Ingénieure logicielle"
+    experience: "Intermédiaire"
+    risk_profile_label: "Élevé"
+    horizon_years_min: 15
+    horizon_years_max: null          # « 15 ans ou plus »
+    objective: "Faire croître son capital à long terme."
+    preferences:
+      - "Très intéressée par l'intelligence artificielle et les technologies émergentes."
+      - "Ouverte aux entreprises en forte croissance et à une volatilité importante."
+      - "Intéressée par les cryptoactifs."
+      - "Souhaite maintenir une certaine diversification et éviter de miser exclusivement sur les technologies."
+    persona_test: "Jusqu'où le système accepte-t-il le risque ? « Risque élevé » ne signifie pas « tout est acceptable »."
+    source: "Datathon - Case Officiel 2026 FR.pdf, p. 5"
+    # Contrainte qualitative officielle : affichée à titre d'information (R10), sans seuil en V1.
+    show_sector_context: true

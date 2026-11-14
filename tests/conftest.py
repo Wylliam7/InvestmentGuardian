@@ -89,8 +89,9 @@ class StepModel(Model):
     ("tools", [noms]) → demande ces outils dans le même cycle (exécution parallèle possible) ;
     ("text", "réponse") → réponse finale. `seen` mémorise, pour chaque appel, les types de blocs reçus."""
 
-    def __init__(self, steps):
+    def __init__(self, steps, tool_args=None):
         self.steps = list(steps)
+        self.tool_args = tool_args or {}
         self.i = 0
         self.seen = []
 
@@ -112,7 +113,7 @@ class StepModel(Model):
         if step[0] == "tools":
             for k, name in enumerate(step[1]):
                 yield {"contentBlockStart": {"start": {"toolUse": {"toolUseId": f"s{self.i}-{k}", "name": name}}}}
-                yield {"contentBlockDelta": {"delta": {"toolUse": {"input": "{}"}}}}
+                yield {"contentBlockDelta": {"delta": {"toolUse": {"input": json.dumps(self.tool_args.get(name, {}))}}}}
                 yield {"contentBlockStop": {}}
             yield {"messageStop": {"stopReason": "tool_use"}}
         else:

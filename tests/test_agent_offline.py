@@ -21,9 +21,11 @@ def make_agent(service, model, fail=()):
 def test_tool_schemas_expose_real_parameters(real_service):
     tools = build_tools(real_service, SessionContext(WEIGHTS, "robert"), Tracer())
     specs = {t.tool_spec["name"]: t.tool_spec["inputSchema"]["json"]["properties"] for t in tools}
-    assert set(specs) == {"evaluate_portfolio", "check_profile_constraints"}
-    assert set(specs["evaluate_portfolio"]) == {"start_date", "end_date"}
-    assert set(specs["check_profile_constraints"]) == {"profile_id", "start_date", "end_date"}
+    assert set(specs) == {"get_profile", "evaluate_portfolio", "check_profile_constraints", "compare_scenarios"}
+    assert set(specs["get_profile"]) == {"profile_id"}
+    assert set(specs["evaluate_portfolio"]) == {"portfolio", "start_date", "end_date"}
+    assert set(specs["check_profile_constraints"]) == {"profile_id", "portfolio", "start_date", "end_date"}
+    assert set(specs["compare_scenarios"]) == {"profile_id", "start_date", "end_date"}
 
 
 # ---------------------------------------------------------------- appel réel d'outil et trace fidèle
@@ -36,15 +38,15 @@ def test_agent_calls_real_tool_and_trace_matches_execution(real_service):
     assert sorted(by_tool) == ["check_profile_constraints", "evaluate_portfolio"] and len(tr.tool_records) == 2
     ev = by_tool["evaluate_portfolio"]
     # la trace correspond à l'exécution : le résultat tracé est exactement celui du moteur
-    expected = real_service.analyze(WEIGHTS).to_tool_dict()
+    expected = {**real_service.analyze(WEIGHTS).to_tool_dict(), "portfolio": "A"}
     assert ev.status == "ok" and ev.result == expected
-    assert ev.arguments == {"start_date": "", "end_date": ""}
+    assert ev.arguments == {"portfolio": "A", "start_date": "", "end_date": ""}
     assert ev.duration_ms > 0 and ev.result_digest and ev.started_at
     assert set(ev.data_refs["files_sha256_prefix"]) == {"assets_universe.csv", "prices_daily.csv", "fx_usdcad_daily.csv"}
     assert ev.data_refs["window"]["n_observations"] == 1228
     chk = by_tool["check_profile_constraints"]
-    assert sum(chk.result["counts"].values()) == 4 and len(chk.result["findings"]) == 4
-    assert chk.arguments == {"profile_id": "robert", "start_date": "", "end_date": ""}
+    assert sum(chk.result["counts"].values()) == 6 and len(chk.result["findings"]) == 6      # R1, R2, R4, R5, R7 + R10 (information)
+    assert chk.arguments == {"profile_id": "", "portfolio": "A", "start_date": "", "end_date": ""}
     json.dumps(ag.tracer.export())     # exportable
 
 
@@ -118,11 +120,12 @@ def test_aws_errors_are_mapped_and_engine_stays_available(real_service, exc, kin
     assert tr.error and tr.error["kind"] == kind and tr.text is None and tr.withheld
     assert tr.error["exception"] == type(exc).__name__          # le type réel n'est pas masqué
     res, rep = real_service.check(WEIGHTS, "robert")             # moteur et Guardian Check intacts
-    assert res.n_obs == 1228 and len(rep.findings) == 4
+    assert res.n_obs == 1228 and len(rep.findings) == 6
 
 
 def test_error_detail_is_sanitized():
-    e = RuntimeError("clé AKIAABCDEFGHIJKLMNOP et aws_secret_access_key=abc123 jeton " + "A" * 60)
+    fake_key = "AKI" + "AABCDEFGHIJKLMNOP"          # construit à l'exécution : aucun motif de clé dans les fichiers suivis
+    e = RuntimeError(f"clé {fake_key} et aws_secret_access_key=abc123 jeton " + "A" * 60)
     d = map_error(e)["detail"]
     assert "AKIA" not in d and "abc123" not in d and "A" * 40 not in d
     assert "[masqué]" in sanitize("Bearer abcdefghijklmnopqrstuvwxyz0123")

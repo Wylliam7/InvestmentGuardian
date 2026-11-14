@@ -38,6 +38,52 @@ Statut : décisions techniques **tirées de votre brief** (validées par vous) ;
 3. *Amira croissance diversifiée* : QQQ, SPY, XIU.TO, NVDA, SHOP.TO, BTC-USD (petite part), XBB.TO.
 4. *Amira tech et crypto concentrée* : NVDA, TSLA, BTC-USD, ETH-USD, QQQ dominants.
 
+## 0 bis. Mise à jour V1 (2026-11-14, branche locale `feature/v1`, départ du commit V0 `ba8dfcf`)
+
+**Profils et règles**
+- **Amira** ajoutée depuis le cas officiel (p. 5) : 26 ans, risque élevé, horizon 15 ans ou plus (`horizon_years_max: null`), objectif de croissance, intérêt pour la technologie, l'IA et les cryptos, volonté d'éviter une concentration exclusivement technologique.
+- **Seuils** : ceux de PROJECT_SPEC §7, repris tels quels. **Aucun seuil de Robert n'a changé** ; un test de gel vérifie l'ensemble (R1, R2, R4, R5, R7 × Robert, Amira). Version de configuration : `0.2-v1`.
+- **R7** = nombre effectif de positions `1/HHI`, définition de PROJECT_SPEC §7 : Robert attention < 6, conflit < 4 ; Amira attention < 5, conflit < 3. Règle de sens inverse (« min ») : un seuil est franchi quand la mesure lui est strictement inférieure. La mesure est arrondie à 9 décimales avant comparaison, pour qu'une erreur de virgule flottante ne change pas un statut à la frontière.
+- **R10** (statut Information, sans seuil) : fenêtre, FNB non décomposés et, pour un profil dont la contrainte qualitative le mentionne (Amira), la part des positions étiquetées « Information Technology » ou « Communication Services », plus le poids de QQQ signalé à part. **R8 n'est pas implémentée** : aucun seuil n'est appliqué à la part technologique en V1.
+- **Statuts affichés** : Conforme, Attention, Conflit, Information. Un conflit est présenté comme un *conflit potentiel selon des seuils heuristiques du prototype*, jamais comme une incompatibilité objective.
+
+**Quatre portefeuilles (H-08 résolue)** — compositions fixées avant de consulter les diagnostics, gelées par un test :
+1. *Robert — Prudent et diversifié* : XBB.TO 15, ZST.TO 10, AGG 10, XIU.TO 15, SPY 10, RY.TO 5, JNJ 5, PG 5, FTS.TO 5, CNR.TO 5, ENB.TO 5, GLD 10. La liste indicative de H-08 (XBB.TO, ZST.TO, XIU.TO, RY.TO, JNJ, GLD) a été étendue (AGG, SPY, PG, FTS.TO, CNR.TO, ENB.TO) pour obtenir 12 positions réparties entre obligations (35 %), actions d'entreprises établies, FNB larges et or, sans crypto, conformément au persona (stabilité, entreprises établies, peu d'intérêt pour les cryptos).
+2. *Robert — Tentation Nvidia* : NVDA 40, XBB.TO 35, XIU.TO 25 (inchangé depuis V0).
+3. *Amira — Croissance diversifiée* : QQQ 20, SPY 20, XIU.TO 15, NVDA 10, SHOP.TO 5, BTC-USD 5, XBB.TO 10, RY.TO 5, JNJ 5, XOM 5.
+4. *Amira — Concentration technologie et crypto* : NVDA 25, TSLA 15, QQQ 25, SHOP.TO 5, BTC-USD 20, ETH-USD 10.
+Tous les actifs existent dans `assets_universe.csv` ; chaque total vaut exactement 100 (entiers). Ce sont des simulations éducatives.
+
+**Diagnostics observés après figement** (mêmes mesures pour les deux profils ; statuts R1 / R2 / R4 / R5 / R7) :
+
+| Portefeuille | Robert | Amira |
+|---|---|---|
+| Robert prudent | Attention / OK / OK / OK / OK | OK / OK / OK / OK / OK |
+| Robert Nvidia 40 % | Conflit ×5 | Conflit / Attention / OK / OK / Conflit |
+| Amira croissance | Attention / Attention / Conflit / Conflit / OK | OK ×5 |
+| Amira tech et crypto | Conflit ×4 / Attention | Attention / Conflit / Conflit / Conflit / OK |
+
+Aucun seuil n'a été modifié après ces résultats. **Limite constatée** : R1 traite un FNB diversifié comme une action individuelle (XBB.TO à 15 % donne « Attention » pour Robert dans son portefeuille prudent). C'est une limite connue de R1 (affichée dans ses limites), pas un motif de changer le seuil ; un raffinement éventuel (R1 sur titres individuels seulement) serait une décision de V2, à justifier indépendamment du résultat souhaité.
+
+**Constructeur de portefeuille** : poids saisis jamais modifiés silencieusement ; poids négatif, nul, non numérique, actif inconnu, doublon, somme ≠ 100 % (tolérance 0,01 point) → erreur explicite, aucun calcul tant que ce n'est pas corrigé. La normalisation proportionnelle existe, mais seulement par un bouton explicite ; les poids réellement analysés sont toujours affichés.
+
+**Comparaison A/B** : même fenêtre, même grille (1 228 dates communes), même devise (CAD), même rééquilibrage mensuel ; la comparaison échoue si les grilles diffèrent. Les compromis sont rédigés sans « meilleur / pire / gagnant / recommandé » (test automatique). Exemple (A = Nvidia 40 %, B = prudent, profil Robert) : rendement cumulé 180,9 % contre 62,9 % ; annualisé 22,9 % contre 10,3 % ; volatilité 22,3 % contre 6,9 % ; drawdown maximal −36,1 % contre −8,4 % ; nombre effectif de positions 2,9 contre 10,0.
+
+**Agent**
+- Quatre outils : `get_profile`, `evaluate_portfolio`, `check_profile_constraints`, `compare_scenarios`. Les deux premiers outils de V0 acceptent maintenant `portfolio` ("A" ou "B") ; `check_profile_constraints` accepte un `profile_id` (profil actif par défaut) et retourne aussi les métriques.
+- **Contexte reconstruit à chaque requête** : une note courte (profil actif, A défini, B défini ou non) précède la question. Elle ne contient ni poids ni résultat ; le modèle doit les obtenir par les outils. Sans cette note, le test live montrait que le modèle ne savait pas qu'un B existait et n'appelait pas `compare_scenarios`.
+- **Faits du persona** : le test live a révélé une hallucination (horizon « 5-10 ans » et objectif inventé pour Robert, sans appel de `get_profile`). Mesures : le profil officiel est retourné par `check_profile_constraints` et `compare_scenarios` ; le prompt impose de ne citer que ce champ ; une **vérification déterministe** retient toute réponse qui cite un horizon (« a à b ans », « n ans ou plus ») ne correspondant à aucun profil officiel. Limite : seuls les horizons sont contrôlés ; les autres affirmations sur le persona ou les chiffres cités dans le texte ne sont pas vérifiés automatiquement (V2).
+- Protections de V0 inchangées : requête indépendante, verrou, trace par requête, réponses rejetées non affichées.
+
+**Langage** : prompt restructuré en quatre parties (faits historiques calculés / seuils heuristiques et constats / objectifs déclarés / interprétation), formulations prudentes imposées, « seuils recommandés » et « normes » interdits, aucune prévision, aucun verdict « meilleur ».
+
+### Corrections finales V1 après revue visuelle (2026-11-14)
+
+1. **Conflit entre le profil sélectionné et la question.** Détection déterministe (nom d'affichage ou identifiant, insensible à la casse et aux accents, mots entiers) *avant* tout appel au modèle. Règle : si la question nomme au moins un profil et ne nomme pas le profil actif de l'interface, l'application répond par une demande de précision (« sélectionnez X ou reformulez ») avec un bouton de sélection du profil ; aucun appel à Bedrock ni aux outils. Si le profil actif est nommé (seul ou avec un autre), la requête est analysée ; sans profil nommé, c'est le profil actif qui s'applique. Garde-fou côté outils : pour chaque requête, seuls le profil actif et les profils nommés par l'utilisateur sont autorisés ; un outil appelé avec un autre `profile_id` échoue et la réponse est retenue, donc le modèle ne peut pas choisir seul un autre profil. Conséquence assumée : « Cette allocation serait-elle évaluée différemment pour Amira ? » avec Robert sélectionné demande maintenant de sélectionner Amira ; le tableau « Même portefeuille, autre profil » du tableau de bord reste disponible, et une question qui nomme les deux profils est acceptée.
+2. **Scénarios par profil.** `config/presets.yaml` contient `profile_defaults` (Robert : A = Tentation Nvidia, B = Prudent ; Amira : A = Concentration technologie et crypto, B = Croissance diversifiée). Au changement de profil : si l'utilisateur n'a encore rien choisi ni modifié, les scénarios du profil sont chargés, avec un bouton « Revenir à mon allocation précédente » ; sinon ils sont seulement proposés et ne se chargent que sur clic, dans les emplacements qui sont des préréglages intacts. **Un portefeuille personnalisé ou en cours d'édition n'est jamais remplacé.** Le menu des préréglages place en premier, avec ★, les scénarios du profil sélectionné, et toute allocation reste évaluable pour tout profil. Correction d'un défaut : changer de préréglage réutilisait le numéro de version de l'éditeur, donc d'anciennes modifications pouvaient réapparaître ; la version est désormais incrémentée à chaque remplacement. Aucune allocation prédéfinie ni aucun seuil n'a été modifié.
+3. **Lisibilité.** Thème `.streamlit/config.toml` (police de base 17 px, titres plus grands, valeurs de métriques agrandies), titre à 3,4 rem, mise en page pleine largeur, espacement et taille des onglets améliorés. Non vérifié visuellement par moi (aucun navigateur sur la machine).
+4. **Preuve de `compare_scenarios`.** Chaque requête affiche la liste des outils réellement exécutés (nom, numéro d'appel, durée, arguments, erreur éventuelle) à partir du journal de notre code, une ligne explicite « compare_scenarios : appelé avec succès (appel n° N) » **ou** « non appelé pendant cette requête » **ou** « appelé mais en échec », et la façon d'ouvrir la trace détaillée ; la ligne de trace de `compare_scenarios` de la dernière requête est dépliée.
+
 ## 1. Décisions techniques validées (issues du brief)
 
 | Id | Décision | Raison |

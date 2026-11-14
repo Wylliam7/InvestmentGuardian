@@ -37,6 +37,7 @@ class AssetStats:
     name: str
     asset_class: str
     currency: str
+    sector: str
     weight: float
     annualized_vol: float
     cumulative_return: float
@@ -93,7 +94,7 @@ class AnalysisResult:
             },
             "asset_class_exposure_pct": {k: pct(v) for k, v in self.class_exposure.items()},
             "currency_exposure_pct": {k: pct(v) for k, v in self.currency_exposure.items()},
-            "assets": [{"ticker": a.ticker, "name": a.name, "asset_class": a.asset_class,
+            "assets": [{"ticker": a.ticker, "name": a.name, "asset_class": a.asset_class, "sector": a.sector,
                         "weight_pct": pct(a.weight), "annualized_volatility_pct": pct(a.annualized_vol),
                         "cumulative_return_pct": pct(a.cumulative_return),
                         "max_drawdown_pct": pct(a.max_drawdown)} for a in self.assets],
@@ -113,7 +114,7 @@ def analyze_portfolio(bundle: DataBundle, panel: CadPanel, weights: dict, start=
     uni = bundle.universe
     assets = tuple(
         AssetStats(ticker=t, name=str(uni.loc[t, "name"]), asset_class=str(uni.loc[t, "asset_class"]),
-                   currency=str(uni.loc[t, "currency"]), weight=series.weights[t],
+                   currency=str(uni.loc[t, "currency"]), sector=str(uni.loc[t, "sector"]), weight=series.weights[t],
                    annualized_vol=m.annualized_volatility(prices[t], factor),
                    cumulative_return=m.cumulative_return(prices[t]),
                    max_drawdown=m.max_drawdown(prices[t]).max_drawdown)

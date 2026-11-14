@@ -2,8 +2,14 @@
 # TOUS les seuils sont des HEURISTIQUES PÉDAGOGIQUES de ce prototype.
 # Ce ne sont ni des normes réglementaires, ni des recommandations financières universelles.
 # Politique : seuils fixés avant d'observer les résultats des portefeuilles de démonstration
-# (voir DECISIONS.md, section 0). Toute modification doit être justifiée par écrit.
-version: "0.1-v0"
+# (voir DECISIONS.md, section 0 et PROJECT_SPEC.md §7). Toute modification doit être justifiée par écrit.
+#
+# Historique de version :
+#   0.1-v0 (2026-11-14) : R1, R2, R4, R5 pour Robert (seuils inchangés depuis).
+#   0.2-v1 (2026-11-14) : ajout du profil Amira (R1, R2, R4, R5) et de la règle R7 (profils Robert et Amira),
+#                         tels que définis dans PROJECT_SPEC.md §7 ; ajout de l'information R10.
+#                         Aucun seuil existant n'a été modifié.
+version: "0.2-v1"
 status: "heuristique"
 frozen_on: "2026-11-14"
 
@@ -11,24 +17,34 @@ frozen_on: "2026-11-14"
 # dépasse ce seuil, ou s'il appartient à la classe crypto.
 volatile_asset_vol_threshold: 0.35
 
+# Secteurs (étiquettes simplifiées du jeu de données) comptés dans la part « technologie » de l'information R10.
+tech_sectors: ["Information Technology", "Communication Services"]
+
 rules:
   R1:
     title: "Concentration dans un actif"
     metric: "Poids de la plus grande position"
     unit: "fraction du portefeuille"
+    direction: max            # signalé quand la mesure dépasse le seuil
+    value_kind: fraction
     method: "max(poids_i) sur les poids cibles du portefeuille"
     justification: >
       Une position dominante expose le portefeuille aux événements propres à un seul émetteur.
-      Pour un profil axé sur la préservation du capital à horizon court, le prototype tolère une position unique plus petite.
+      Les seuils sont plus bas pour un profil axé sur la préservation du capital à horizon court
+      que pour un profil de croissance à très long terme.
     limitations:
       - "Ne tient pas compte de la corrélation entre actifs ni de l'exposition indirecte via les FNB (pas de look-through)."
+      - "Traite de la même façon une action individuelle et un FNB largement diversifié."
       - "Seuil heuristique, sans valeur normative."
     thresholds:
       robert: {attention: 0.10, conflict: 0.20}
+      amira: {attention: 0.20, conflict: 0.35}
   R2:
     title: "Exposition aux actifs historiquement volatils"
     metric: "Somme des poids des actifs volatils (volatilité annualisée > seuil, ou crypto)"
     unit: "fraction du portefeuille"
+    direction: max
+    value_kind: fraction
     method: "somme des poids cibles des actifs dont la volatilité annualisée en CAD sur la fenêtre dépasse le seuil, ou de classe crypto"
     justification: >
       Les actifs très volatils ont connu de grandes variations de valeur sur la période observée.
@@ -39,33 +55,70 @@ rules:
       - "Le seuil de classification des actifs est lui-même une heuristique."
     thresholds:
       robert: {attention: 0.10, conflict: 0.20}
+      amira: {attention: 0.35, conflict: 0.50}
   R4:
     title: "Volatilité du portefeuille"
     metric: "Volatilité annualisée du portefeuille (CAD)"
     unit: "fraction annualisée"
+    direction: max
+    value_kind: fraction
     method: "écart-type des rendements quotidiens du portefeuille rééquilibré mensuellement x racine du facteur d'annualisation observé"
     justification: >
-      La volatilité résume l'amplitude des variations quotidiennes. Pour un profil à tolérance faible à modérée,
-      le prototype considère comme élevée une volatilité nettement supérieure à celle d'un portefeuille diversifié classique.
+      La volatilité résume l'amplitude des variations quotidiennes. Le prototype compare cette amplitude
+      à des seuils différents selon le niveau de risque déclaré du persona.
     limitations:
       - "La volatilité n'est qu'un indicateur de risque parmi d'autres (horizon, diversification et préférences comptent aussi)."
       - "Estimée sur cinq ans, avec un biais du survivant dans l'univers d'actifs."
     thresholds:
       robert: {attention: 0.10, conflict: 0.14}
+      amira: {attention: 0.25, conflict: 0.35}
   R5:
     title: "Perte historique maximale (drawdown)"
     metric: "Valeur absolue du drawdown maximal"
     unit: "fraction de la valeur du portefeuille"
+    direction: max
+    value_kind: fraction
     method: "min(valeur / maximum cumulé de la valeur - 1) sur la fenêtre, pour le portefeuille rééquilibré mensuellement"
     justification: >
       Le drawdown maximal décrit la pire baisse depuis un sommet observée dans l'historique analysé.
-      Le persona Robert n'a pas de perte maximale acceptable explicite dans le cas officiel ;
-      les seuils sont donc des heuristiques liées à son objectif de préservation du capital et à son horizon de 3 à 5 ans.
+      Les personas officiels n'indiquent pas de perte maximale acceptable : les seuils sont des heuristiques
+      liées au niveau de risque et à l'horizon déclarés, et ne présument pas de la tolérance personnelle réelle de l'investisseur.
     limitations:
-      - "Une seule trajectoire historique ; un drawdown futur peut être plus important."
+      - "Une seule trajectoire historique ; un drawdown futur peut être plus important ou plus faible."
       - "Pas de perte maximale acceptable saisie par l'investisseur dans cette version."
     thresholds:
       robert: {attention: 0.15, conflict: 0.25}
+      amira: {attention: 0.40, conflict: 0.55}
+  R7:
+    title: "Diversification (nombre effectif de positions)"
+    metric: "Nombre effectif de positions = 1 / HHI"
+    unit: "positions effectives"
+    direction: min            # signalé quand la mesure est INFÉRIEURE au seuil
+    value_kind: count
+    method: "1 / somme(poids_i au carré) sur les poids cibles ; HHI = indice de Herfindahl-Hirschman"
+    justification: >
+      Le nombre effectif de positions résume à quel point le poids est réparti : 4 positions égales donnent 4,
+      alors qu'une position à 40 % avec deux autres donne environ 2,9. Un nombre plus faible signale un portefeuille
+      moins diversifié en nombre de positions.
+    limitations:
+      - "Compte les positions, pas les facteurs de risque : deux actions très corrélées comptent pour deux."
+      - "Ne tient pas compte de la diversification interne des FNB (pas de look-through)."
+      - "Seuil heuristique, sans valeur normative."
+    thresholds:
+      robert: {attention: 6, conflict: 4}
+      amira: {attention: 5, conflict: 3}
+
+# Information sans seuil (statut INFO).
+info_rules:
+  R10:
+    title: "Contexte, qualité des données et contraintes qualitatives"
+    method: "Fenêtre et nombre de dates ; part des FNB (non décomposés) ; part « technologie » selon les étiquettes sectorielles du jeu de données, pour les profils dont la contrainte qualitative le mentionne"
+    justification: >
+      Rappelle sur quelles données repose l'analyse. Pour un profil qui souhaite éviter une concentration exclusivement
+      technologique (Amira), affiche la part technologique mesurée, sans seuil dans cette version.
+    limitations:
+      - "Les secteurs sont des étiquettes simplifiées attribuées par les organisateurs ; les FNB ne sont pas décomposés (QQQ est un FNB de croissance fortement technologique)."
+      - "Aucun seuil n'est appliqué à la part technologique en V1 : l'information n'est pas un contrôle."
 
 general_limitations:
   - "Simulation historique (2021-11-12 au 2026-11-12), pas une prévision. Les performances passées ne garantissent pas les résultats futurs."
@@ -73,7 +126,7 @@ general_limitations:
   - "Fenêtre unique de cinq ans ; les résultats dépendent des dates de début et de fin."
   - "Pas de frais, d'impôts ni d'écarts achat-vente ; rendements avec réinvestissement des dividendes (adj_close)."
   - "Calendrier commun TSX et marchés américains : les mouvements des cryptos les jours où les actions ne se négocient pas ne sont pas observés individuellement."
-  - "Les seuils du Guardian Check sont des heuristiques de démonstration, modifiables."
+  - "Les seuils du Guardian Check sont des heuristiques de démonstration, modifiables ; ce ne sont pas des normes."
 
 missing_information:
   - "Part de ce portefeuille dans le patrimoine total de l'investisseur."

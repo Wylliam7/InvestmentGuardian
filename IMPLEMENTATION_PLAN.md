@@ -3,7 +3,16 @@
 Statut : **phase 0 et V0 terminées** (2026-11-14, ~18 h 50 UTC). **V1 n'est pas commencée : en attente de validation du participant.**
 Remplace la v1 (51–68 h), jugée trop ambitieuse pour un développeur solo.
 
-## Avancement réel
+## Avancement V1 (2026-11-14, branche locale `feature/v1`, non publiée)
+
+**V1 terminée, en attente de validation.** Départ du commit V0 `ba8dfcf` ; `main` n'a pas été modifiée ; aucun `git push`. Les changements de V1 ne sont pas encore commités.
+
+- **Ajouts** : profil Amira ; règle R7 et information R10 ; quatre portefeuilles prédéfinis ; constructeur de portefeuille (ajout, retrait, modification, validation, normalisation explicite) ; comparaison A/B ; outils `get_profile` et `compare_scenarios` ; note de contexte par requête ; vérification déterministe des horizons cités ; interface en quatre onglets (Portfolio Builder, Risk Dashboard, Comparaison A/B, AI Guardian & Explicabilité).
+- **Tests** : 143 tests hors AWS réussis, 5 tests live ignorés par défaut ; 5 requêtes agent réelles contre Bedrock pendant V1 (voir DECISIONS.md section 0 bis pour les résultats).
+- **Corrections finales après revue visuelle (même jour)** : conflit profil/question (clarification sans appel au modèle + garde-fou des outils), scénarios par profil sans écrasement, thème et mise en page plus lisibles, preuve visible des outils appelés (dont `compare_scenarios`). Détail dans DECISIONS.md, « Corrections finales V1 ». 181 tests hors AWS réussis, 5 tests live ignorés par défaut ; 3 requêtes agent supplémentaires contre Bedrock pour la validation.
+- **Reste pour V2 et la démonstration** : voir la fin de ce document (« Reste à faire »).
+
+## Avancement réel (V0)
 
 | Phase | État | Notes |
 |---|---|---|
@@ -128,3 +137,24 @@ Ordre de suppression : (1) tout le « hors MVP » ; (2) graphique de corrélatio
 | Fatigue / sous-estimation | Gel dimanche 18 h ; règles de coupe ; jalons visibles |
 | Calendrier commun : perte des mouvements crypto du week-end | Documenté (DECISIONS F-04) ; mesure de l'écart sur BTC/ETH dans V0 et affichage dans les limites |
 | Fuseau horaire des échéances | À confirmer (Montréal supposé) |
+
+
+## Reste à faire après V1 (proposition, à valider)
+
+**Échéances rappelées** : GitHub + application dimanche 2026-11-15 23 h 59 ; vidéo, one pager et documentation technique lundi 2026-11-16 14 h ; pitch des finalistes vendredi 2026-11-20.
+
+**Indispensable avant le gel**
+1. Seconde revue visuelle après les corrections de lisibilité (la première revue a été faite par vous ; je n'ai pas de navigateur).
+2. README (installation, emplacement des données officielles non publiées, variables d'environnement, lancement, tests, reproduction du scénario de démonstration).
+3. Confirmation avec les organisateurs que les CSV ne peuvent pas être publiés ; le README indique où placer les fichiers.
+4. Fusion de `feature/v1` dans `main` et publication, **sur votre autorisation**.
+
+**Démonstration (vidéo d'environ 5 minutes)** — enregistrer tant que Bedrock fonctionne : Robert + « Tentation Nvidia » → analyse et conflits potentiels → comparaison avec « Prudent et diversifié » → même portefeuille pour Amira (mêmes mesures, statuts différents) → question à l'agent (comparaison) avec la trace des outils → limites et mode sans AWS.
+
+**Livrables du lundi** : documentation technique (à partir de ces documents), one pager, vidéo.
+
+**Améliorations possibles (V2, seulement si le temps le permet)**
+- Contrôle automatique des chiffres cités par le modèle contre les résultats d'outils (badge « chiffres vérifiés ») ; contrôle élargi des faits du persona.
+- Raffinement discuté de R1 (FNB diversifiés vs titres individuels), à décider avec une justification indépendante du résultat.
+- R3, R6, R8, R9 ; `sensitivity_sweep` et `analyze_asset` ; export du rapport ; relecture d'une trace réelle enregistrée.
+- Mémoire de suivi reconstruite explicitement (sans réinjecter de résultats d'outils anciens).
