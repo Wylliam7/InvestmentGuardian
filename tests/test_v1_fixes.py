@@ -245,7 +245,7 @@ def test_any_allocation_can_be_evaluated_for_any_profile(real_service):
     at.selectbox(key="preset_A").set_value("robert_nvda_40").run()
     assert at.session_state.ctx.profile_id == "amira" and at.session_state.ctx.weights == NVDA40
     r = real_service.analyze(NVDA40)
-    assert {m.label: m.value for m in at.metric}["Volatilité annualisée"] == f"{100 * r.volatility:.1f} %"
+    assert {m.label: m.value for m in at.metric}["Fluctuations du portefeuille"] == f"{100 * r.volatility:.1f}".replace(".", ",") + " %"
 
 
 def test_preset_menu_lists_the_selected_profile_scenarios_first_with_a_marker():
@@ -279,7 +279,8 @@ def test_theme_and_layout_for_readability():
 def test_title_and_subtitle_are_rendered():
     at = run_app()
     assert at.title[0].value == "🛡️ Investment Guardian"
-    assert any("Your decisions. Your risks. Explained." in m.value and "ig-sub" in m.value for m in at.markdown)
+    assert any("Comprenez les risques de vos décisions d'investissement." in m.value and "ig-sub" in m.value for m in at.markdown)
+    assert any("Your decisions. Your risks. Explained." in c.value for c in at.caption)
 
 
 # ============================================================ 4. preuve de compare_scenarios dans l'interface
@@ -293,8 +294,8 @@ def test_ui_shows_real_proof_when_compare_scenarios_was_called(monkeypatch):
     assert any("compare_scenarios : appelé avec succès" in s.value and f"appel n° {recs[0].id}" in s.value for s in at.success)
     md = " ".join(m.value for m in at.markdown)
     assert f"`compare_scenarios` · appel n° {recs[0].id}" in md and "✅" in md
-    assert any("Pour ouvrir la trace détaillée" in c.value and "requête 1" in c.value for c in at.caption)
-    assert any(f"#{recs[0].id} · requête 1 · compare_scenarios" in e.label for e in at.expander)        # ligne de la trace réelle
+    assert any(e.label == "Voir les détails techniques de l'analyse" for e in at.expander)          # V2 : trace technique dans une section repliée
+    assert any(f"#{recs[0].id} · requête 1 · compare_scenarios" in m.value for m in at.markdown)    # ligne de la trace réelle
 
 
 def test_ui_never_claims_compare_scenarios_when_it_was_not_called(monkeypatch):
@@ -305,7 +306,7 @@ def test_ui_never_claims_compare_scenarios_when_it_was_not_called(monkeypatch):
     assert [r.tool for r in at.session_state.agent.tracer.records] == [EV]
     assert not any("compare_scenarios : appelé" in s.value for s in at.success)
     assert any("compare_scenarios : non appelé pendant cette requête" in c.value for c in at.caption)
-    assert not any("compare_scenarios" in e.label for e in at.expander)
+    assert not any(f"requête 1 · compare_scenarios" in m.value for m in at.markdown)
 
 
 def test_ui_reports_a_failed_compare_scenarios_call(monkeypatch):

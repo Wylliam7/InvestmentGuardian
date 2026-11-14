@@ -4,7 +4,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from charts import allocation_figure, drawdown_figure, performance_figure
-from conftest import REPO
+from conftest import REPO, fr_pct, v2_expected_metrics
 
 WEIGHTS = {"NVDA": .40, "XBB.TO": .35, "XIU.TO": .25}
 
@@ -38,10 +38,8 @@ def test_app_renders_engine_results_without_aws(monkeypatch, real_service):
     assert not at.exception, at.exception
     res = real_service.analyze(WEIGHTS)
     metrics = {m.label: m.value for m in at.metric}
-    assert metrics["Rendement cumulé"] == f"{100 * res.cumulative_return:.1f} %"
-    assert metrics["Volatilité annualisée"] == f"{100 * res.volatility:.1f} %"
-    assert metrics["Drawdown maximal"] == f"{100 * res.drawdown.max_drawdown:.1f} %"
-    assert metrics["Rendement annualisé"] == f"{100 * res.annualized_return:.1f} %"
+    exp = v2_expected_metrics(real_service, WEIGHTS)
+    assert {k: metrics[k] for k in exp} == exp                                # valeurs identiques à celles du moteur (libellés V2)
     assert any("Simulation éducative" in m.value for m in at.markdown)
     # le bouton de question : AWS est indisponible → erreur explicite, indicateurs conservés
     at.text_area[0].set_value("Pourquoi ce portefeuille pourrait-il être risqué pour Robert ?")
@@ -50,7 +48,7 @@ def test_app_renders_engine_results_without_aws(monkeypatch, real_service):
     at.run()
     assert not at.exception, at.exception
     assert any("Amazon Bedrock est injoignable" in e.value or "Aucun identifiant" in e.value for e in at.error), [e.value for e in at.error]
-    assert {m.label: m.value for m in at.metric}["Volatilité annualisée"] == f"{100 * res.volatility:.1f} %"
+    assert {m.label: m.value for m in at.metric}["Fluctuations du portefeuille"] == fr_pct(res.volatility)
 
 
 def test_app_tool_failure_shows_incomplete_analysis_and_no_model_text(monkeypatch):
@@ -76,4 +74,4 @@ def test_app_tool_failure_shows_incomplete_analysis_and_no_model_text(monkeypatc
     assert "12,3" not in rendered
     assert any("Au moins un outil a échoué" in w.value for w in at.warning)
     # les indicateurs du moteur restent présents
-    assert {m.label: m.value for m in at.metric}["Rendement cumulé"].endswith("%")
+    assert {m.label: m.value for m in at.metric}["Rendement historique"].endswith("%")

@@ -3,6 +3,15 @@
 Statut : **phase 0 et V0 terminées** (2026-11-14, ~18 h 50 UTC). **V1 n'est pas commencée : en attente de validation du participant.**
 Remplace la v1 (51–68 h), jugée trop ambitieuse pour un développeur solo.
 
+## Avancement V2 (2026-11-14, branche locale `feature/v2-ux`, non publiée)
+
+**V2 terminée, en attente de validation.** Départ du commit V1 `e5044f8` ; `main` et `feature/v1` n'ont pas été modifiées ; aucun `git push`. Les changements de V2 ne sont pas commités.
+
+- **Ajouts** : couche d'explications déterministes (`src/guardian/explain/`), composants et réorganisation de l'interface (`app/components.py`, `app/app.py`), bouton « Explique-moi mes risques avec l'IA » (même agent), traçabilité à deux niveaux, barre latérale simplifiée, comparaison simplifiée, confirmation d'analyse, glossaire et info-bulles.
+- **Inchangés (vérifié par test)** : moteur financier, règles, seuils, profils, données, allocations prédéfinies.
+- **Tests** : 225 tests hors AWS réussis, 8 tests live ignorés par défaut ; 3 requêtes agent réelles contre Bedrock pour valider le bouton IA (Robert, Amira, puis Robert après resserrage de la consigne).
+- **Reste à faire** (hors V2, après votre validation) : revue visuelle dans le navigateur, README, dépôt, livrables de soumission (vidéo, documentation technique, one pager) avant lundi 14 h.
+
 ## Avancement V1 (2026-11-14, branche locale `feature/v1`, non publiée)
 
 **V1 terminée, en attente de validation.** Départ du commit V0 `ba8dfcf` ; `main` n'a pas été modifiée ; aucun `git push`. Les changements de V1 ne sont pas encore commités.

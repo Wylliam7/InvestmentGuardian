@@ -2,10 +2,10 @@
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from conftest import REPO
+from conftest import REPO, V2_MAIN_LABELS, v2_expected_metrics
 from guardian.finance.presets import load_presets
 
-MAIN = ("Rendement cumulé", "Rendement annualisé", "Volatilité annualisée", "Drawdown maximal")
+MAIN = V2_MAIN_LABELS
 
 
 def run_app():
@@ -17,9 +17,7 @@ def main_metrics(at):
 
 
 def expected_metrics(service, weights_pct):
-    r = service.analyze({t: w / 100 for t, w in weights_pct.items()})
-    return {"Rendement cumulé": f"{100 * r.cumulative_return:.1f} %", "Rendement annualisé": f"{100 * r.annualized_return:.1f} %",
-            "Volatilité annualisée": f"{100 * r.volatility:.1f} %", "Drawdown maximal": f"{100 * r.drawdown.max_drawdown:.1f} %"}
+    return v2_expected_metrics(service, {t: w / 100 for t, w in weights_pct.items()})
 
 
 def test_header_title_subtitle_and_readable_banner():
@@ -27,7 +25,9 @@ def test_header_title_subtitle_and_readable_banner():
     assert not at.exception, at.exception
     assert "Investment Guardian" in at.title[0].value
     md = " ".join(m.value for m in at.markdown)
-    assert "Your decisions. Your risks. Explained." in md and "Simulation éducative — aucun conseil financier personnalisé" in md
+    assert "Comprenez les risques de vos décisions d'investissement." in md                              # sous-titre V2
+    assert any("Your decisions. Your risks. Explained." in c.value for c in at.caption)                  # signature conservée
+    assert "Simulation éducative — aucun conseil financier personnalisé" in md
     assert "color: #3D2C00" in md and "background: #FFF4D6" in md                      # contraste explicite du bandeau
 
 
@@ -46,7 +46,7 @@ def test_switching_profile_keeps_metrics_and_updates_agent_context():
     assert not at.exception, at.exception
     assert main_metrics(at) == before                                                  # mêmes métriques, quel que soit le profil
     assert at.session_state.ctx.profile_id == "amira"
-    assert any("Amira" in m.value and "objectifs déclarés" in m.value for m in at.markdown)
+    assert any(m.value.startswith("Pour Amira,") for m in at.markdown)                                 # résumé prioritaire personnalisé
 
 
 @pytest.mark.parametrize("pid", list(load_presets()))
@@ -64,8 +64,10 @@ def test_comparison_tab_shows_same_period_and_no_winner(real_service):
     assert not at.exception, at.exception
     caps = " ".join(c.value for c in at.caption)
     assert "exactement la même période" in caps and "aucun portefeuille n'est désigné comme meilleur" in caps
-    assert any("Compromis historiques observés" in m.value for m in at.markdown)
-    assert any("Volatilité annualisée plus élevée pour A" in m.value for m in at.markdown)
+    md = " ".join(m.value for m in at.markdown)
+    assert "Les compromis à retenir" in md and "Comparez deux façons de répartir votre argent fictif, sur la même période historique." in md
+    assert any("A a eu un rendement historique supérieur" in m.value for m in at.markdown)
+    assert any("B a connu des fluctuations moins importantes" in m.value for m in at.markdown)
 
 
 def test_disabling_portfolio_b_removes_it_from_the_agent_context():
@@ -73,15 +75,15 @@ def test_disabling_portfolio_b_removes_it_from_the_agent_context():
     at.checkbox(key="use_b").uncheck().run()
     assert not at.exception, at.exception
     assert at.session_state.ctx.weights_b is None
-    assert any("Activez le portefeuille B" in i.value for i in at.info)
+    assert any("Activez le second portefeuille (B)" in i.value for i in at.info)
 
 
 def test_builder_shows_analysed_weights_and_sum():
     at = run_app()
     md = " ".join(m.value for m in at.markdown)
-    assert "Poids réellement analysés" in md and "NVDA 40 %" in md and "XBB.TO 35 %" in md
-    sums = [m.value for m in at.metric if m.label == "Somme des poids saisis"]
-    assert sums == ["100.00 %", "100.00 %"]
+    assert "Pondérations réellement analysées" in md and "NVDA 40 %" in md and "XBB.TO 35 %" in md
+    sums = [m.value for m in at.metric if m.label == "Total des pondérations saisies"]
+    assert sums == ["100,00 %", "100,00 %"]
 
 
 def test_app_still_computes_without_bedrock_and_reports_the_outage(monkeypatch, real_service):

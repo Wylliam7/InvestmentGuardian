@@ -94,6 +94,7 @@ class StepModel(Model):
         self.tool_args = tool_args or {}
         self.i = 0
         self.seen = []
+        self.prompts = []          # premier message utilisateur de chaque requête
 
     def update_config(self, **kw):
         pass
@@ -107,6 +108,8 @@ class StepModel(Model):
 
     async def stream(self, messages, tool_specs=None, system_prompt=None, **kw):
         self.seen.append([[next(iter(b)) for b in m["content"]] for m in messages])
+        if len(messages) == 1:
+            self.prompts.append("".join(b.get("text", "") for b in messages[0]["content"]))
         step = self.steps[self.i] if self.i < len(self.steps) else ("text", "(fin du scénario)")
         self.i += 1
         yield {"messageStart": {"role": "assistant"}}
@@ -122,3 +125,18 @@ class StepModel(Model):
             yield {"contentBlockStop": {}}
             yield {"messageStop": {"stopReason": "end_turn"}}
         yield {"metadata": {"usage": {"inputTokens": 10, "outputTokens": 5, "totalTokens": 15}, "metrics": {"latencyMs": 1}}}
+
+
+def fr_pct(x, digits=1):
+    """Format d'affichage V2 : virgule décimale."""
+    return f"{100 * x:.{digits}f}".replace(".", ",") + " %"
+
+
+V2_MAIN_LABELS = ("Rendement historique", "Fluctuations du portefeuille", "Plus forte baisse historique", "Répartition de mon portefeuille")
+
+
+def v2_expected_metrics(service, weights_frac):
+    r = service.analyze(weights_frac)
+    return {"Rendement historique": fr_pct(r.cumulative_return), "Fluctuations du portefeuille": fr_pct(r.volatility),
+            "Plus forte baisse historique": fr_pct(r.drawdown.max_drawdown),
+            "Répartition de mon portefeuille": f"≈ {r.concentration.effective_n:.1f}".replace(".", ",") + " positions"}

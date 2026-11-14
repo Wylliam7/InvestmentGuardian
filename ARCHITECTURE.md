@@ -248,3 +248,17 @@ Cet état doit aussi servir si le compte AWS est supprimé : le jury peut exécu
 **Incident 2 — le modèle contourne un outil en échec.** Après deux erreurs d'outil, le modèle a calculé lui-même la somme et répondu comme si de rien n'était (en écrivant « je vais procéder directement au calcul »). Pour un produit dont la promesse est « le modèle ne calcule rien », c'est un risque réel. Mesures : (a) prompt système exigeant de signaler un échec d'outil au lieu de calculer ; (b) la trace affiche le statut `error` ; (c) les chiffres de l'interface viennent des objets d'outils, pas du texte du modèle ; (d) le contrôle numérique automatique (après MVP) détecterait un chiffre absent des résultats.
 
 **Limites du test** : un seul modèle, un outil jouet, peu de variabilité observée (température 0). Le comportement avec des schémas plus riches (`compare_scenarios`) sera à retester dès la tranche verticale. Le script est dans `scratch/smoke_strands.py` (ignoré par git).
+
+## 14. Couche d'explications V2 (`src/guardian/explain/`)
+
+Aucune dépendance à Streamlit, à AWS ou à l'IA. Elle transforme les résultats du moteur et du Guardian Check en texte :
+
+| Module | Rôle |
+|---|---|
+| `cards.py` | Cartes Guardian : problème, chiffre, pourquoi pour ce profil, niveau de vigilance, comment c'est calculé, limites, détails techniques |
+| `summary.py` | Résumé prioritaire : regroupement des règles corrélées en trois thèmes, comptage fidèle |
+| `compare_plain.py` | Compromis A/B en phrases avec valeurs exactes, sans verdict |
+| `trace_view.py` | Niveau 1 de l'explicabilité : phrases décrivant uniquement les appels d'outils réellement journalisés |
+| `glossary.py`, `format.py` | Termes, info-bulles, formats français (virgule, dates) |
+
+`app/components.py` ne contient que de l'affichage. Le bouton « Explique-moi mes risques avec l'IA » appelle `GuardianAgent.ask(question, task=…, required_tools=…, kind="explain_risks")` : même agent, même verrou, même journal ; les outils obligatoires sont vérifiés après coup.

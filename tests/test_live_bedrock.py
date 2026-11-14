@@ -125,3 +125,50 @@ def test_live_ui_trace_shows_a_real_successful_compare_scenarios_call():
     assert any("compare_scenarios : appelé avec succès" in s.value and f"appel n° {cmp_ok[0].id}" in s.value for s in at.success)
     assert any(f"#{cmp_ok[0].id} · requête 1 · compare_scenarios" in e.label for e in at.expander)
     assert not any("Analyse incomplète" in w.value for w in at.warning)
+
+
+# ----------------------------------------------------------------------------- V2 : bouton « Explique-moi mes risques avec l'IA »
+def _live_explain(profile_id: str):
+    from streamlit.testing.v1 import AppTest
+    at = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app" / "app.py"), default_timeout=240).run()
+    if profile_id != "robert":
+        at.selectbox(key="preset_A").set_value("robert_prudent").run()          # choix explicite, puis retour au scénario Nvidia pour le même portefeuille
+        at.selectbox(key="preset_A").set_value("robert_nvda_40").run()
+        at.selectbox(key="profile_id").set_value(profile_id).run()
+    at.button(key="explain_btn").click()
+    at.run()
+    assert not at.exception, at.exception
+    return at
+
+
+def _report_live(at, name):
+    tr = at.session_state.history[-1]
+    print("\nOUTILS :", [(r.id, r.tool, r.status, r.arguments) for r in tr.tool_records], "| cycles :", tr.cycles, "| usage :", tr.usage)
+    print("RETENUE :", tr.withheld, tr.withheld_reason, "\nTEXTE :\n", tr.text)
+    TRACES.mkdir(exist_ok=True)
+    (TRACES / f"live_v2_explain_{name}.json").write_text(json.dumps(
+        {"question": tr.question, "kind": tr.kind, "model_id": tr.model_id, "region": tr.region, "started_at": tr.started_at, "context": tr.context,
+         "answer": tr.text, "withheld": tr.withheld, "usage": tr.usage, "tool_records": at.session_state.agent.tracer.export()}, ensure_ascii=False, indent=2))
+    return tr
+
+
+def test_live_v2_explain_my_risks_for_robert():
+    at = _live_explain("robert")
+    tr = _report_live(at, "robert")
+    assert tr.error is None and tr.kind == "explain_risks" and not tr.withheld and tr.text
+    tools = {r.tool: r for r in tr.tool_records if r.status == "ok"}
+    assert "evaluate_portfolio" in tools and "check_profile_constraints" in tools
+    assert tr.context["profile_id"] == "robert" and tr.context["weights_a_pct"] == {"NVDA": 40.0, "XBB.TO": 35.0, "XIU.TO": 25.0}
+    assert all(r.turn == 1 for r in tr.tool_records)
+    md = " ".join(m.value for m in at.markdown)
+    assert "A analysé votre portefeuille A" in md and "A comparé les risques du portefeuille A avec le profil de Robert" in md
+    assert "Faits historiques utilisés (valeurs calculées par le moteur)" in md
+
+
+def test_live_v2_explain_my_risks_for_amira_same_portfolio():
+    at = _live_explain("amira")
+    tr = _report_live(at, "amira")
+    assert tr.error is None and not tr.withheld and tr.text
+    assert tr.context["profile_id"] == "amira" and tr.context["weights_a_pct"] == {"NVDA": 40.0, "XBB.TO": 35.0, "XIU.TO": 25.0}
+    chk = next(r for r in tr.tool_records if r.tool == "check_profile_constraints" and r.status == "ok")
+    assert chk.result["profile_id"] == "amira"

@@ -84,6 +84,30 @@ Aucun seuil n'a été modifié après ces résultats. **Limite constatée** : R1
 3. **Lisibilité.** Thème `.streamlit/config.toml` (police de base 17 px, titres plus grands, valeurs de métriques agrandies), titre à 3,4 rem, mise en page pleine largeur, espacement et taille des onglets améliorés. Non vérifié visuellement par moi (aucun navigateur sur la machine).
 4. **Preuve de `compare_scenarios`.** Chaque requête affiche la liste des outils réellement exécutés (nom, numéro d'appel, durée, arguments, erreur éventuelle) à partir du journal de notre code, une ligne explicite « compare_scenarios : appelé avec succès (appel n° N) » **ou** « non appelé pendant cette requête » **ou** « appelé mais en échec », et la façon d'ouvrir la trace détaillée ; la ligne de trace de `compare_scenarios` de la dernière requête est dépliée.
 
+## 0 ter. Mise à jour V2 — refonte UX, accessibilité et explications agentiques (2026-11-14, branche locale `feature/v2-ux`, départ du commit V1 `e5044f8`)
+
+**Périmètre et garde-fous.** Aucune modification du moteur financier, des règles, des seuils, des profils, des données ni des allocations prédéfinies : un test compare les métriques, seuils et statuts des 4 portefeuilles pour les 2 profils à une référence figée sur V1 (`tests/golden/v1_baseline.json`) et vérifie par `git diff` que `src/guardian/{finance,rules,data}` et la configuration des règles sont identiques à `e5044f8`. Aucun service AWS ni second agent n'a été ajouté.
+
+**Parcours et vocabulaire.** Quatre onglets : *Mon portefeuille*, *Comprendre mes risques*, *Comparer deux choix*, *Assistant IA*. Sous-titre « Comprenez les risques de vos décisions d'investissement » ; la signature anglaise est conservée en légende. Les noms techniques restent dans les info-bulles et les sections avancées.
+
+**Barre latérale.** Par défaut : nom, profil actif, disponibilité du moteur et de l'assistant (détection locale des identifiants, mise en cache 5 minutes, aucun appel Bedrock), mention de simulation. Le reste (région, identifiant exact du modèle, type d'authentification, test de connexion, simulation de panne, compteurs de session) est dans « Paramètres avancés et diagnostic technique », fermé par défaut ; aucune valeur d'identifiant n'est affichée.
+
+**Guardian Check présenté en français simple.** Chaque carte répond à : quel problème ? quel chiffre ? pourquoi pour ce profil ? quel niveau de vigilance ? comment est-ce calculé ? Niveaux affichés : « Risque important à examiner » (statut interne CONFLIT), « Point de vigilance » (ATTENTION), « Aucun dépassement détecté selon ce critère » (OK), « Information complémentaire » (INFO) ; les statuts internes, les identifiants de règles, les seuils, les formules et la version de configuration restent dans « Détails techniques ». Les textes sont produits par du code déterministe (`src/guardian/explain/cards.py`) à partir des mesures du moteur ; le modèle n'intervient jamais dans la valeur, le repère ou le statut. Les limites scientifiques sont conservées et reformulées (par exemple : un fonds peut être plus diversifié qu'une action individuelle, même si R1 applique le même repère).
+
+**Résumé prioritaire (sans IA).** Les règles corrélées sont regroupées en trois thèmes : concentration (R1, R7), actifs très fluctuants (R2), fluctuations et baisses historiques (R4, R5). Seuls les thèmes dont une règle franchit un repère apparaissent ; le texte annonce exactement leur nombre (un, deux ou trois) et ajoute une note de recoupement lorsque la plus grande position est aussi un actif très fluctuant. Cinq règles dépassées sur Nvidia à 40 % donnent donc trois éléments, jamais « cinq risques ».
+
+**Diversification.** L'interface distingue le nombre réel d'actifs et le nombre équivalent de positions de poids égal (1/HHI), sans changer le calcul, et rappelle que cette mesure ne tient pas entièrement compte des corrélations ni du contenu des fonds.
+
+**Bouton « Explique-moi mes risques avec l'IA ».** Même agent Strands et même mécanisme que l'assistant (`GuardianAgent.ask`), avec une consigne interne (`task`) et des outils obligatoires (`evaluate_portfolio`, `check_profile_constraints`) : si l'un manque, la réponse est retenue. Profil actif et portefeuille A effectivement analysé, requête indépendante avec son propre numéro, trace propre. L'explication n'est affichée que si elle correspond au profil et au portefeuille actuels. Les « faits historiques utilisés » sont repris des résultats d'outils, pas du texte du modèle. Limite constatée en test live : le modèle présente parfois trois critères liés comme trois risques distincts malgré la consigne ; le résumé déterministe de l'application ne le fait pas.
+
+**Explicabilité à deux niveaux.** Niveau 1 : phrases simples sur ce que l'assistant a réellement fait, produites uniquement à partir des appels journalisés (aucune phrase pour un outil non exécuté), avec période, devise, provenance et deux mentions fixes : les outils financiers ont été exécutés par le code Python ; le texte de l'IA est une interprétation non vérifiée phrase par phrase (jamais « entièrement vérifié »). Niveau 2 : section fermée « Voir les détails techniques de l'analyse » qui conserve tout (noms exacts, arguments JSON, statut, durée, empreintes, références de données, résultat complet).
+
+**Comparaison.** Compromis en phrases avec les valeurs exactes avant les tableaux ; aucun portefeuille n'est désigné comme meilleur.
+
+**Confirmation d'analyse.** Le bouton « Analyser ce portefeuille » recalcule réellement (sans appel Bedrock) avant de confirmer ; le message de réussite nomme le portefeuille et renvoie à l'onglet des résultats ; il disparaît si les pondérations changent et n'apparaît jamais si la validation ou le calcul échoue.
+
+**Lisibilité.** Dates en français dans les cartes ; rappel court du profil dans chaque carte et profil complet affiché une fois au-dessus des cartes.
+
 ## 1. Décisions techniques validées (issues du brief)
 
 | Id | Décision | Raison |

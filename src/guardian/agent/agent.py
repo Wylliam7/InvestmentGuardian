@@ -39,6 +39,26 @@ RÈGLES ABSOLUES
 10. Si la question sort du périmètre de tes outils, dis-le au lieu de répondre de mémoire."""
 
 
+EXPLAIN_RISKS_LABEL = "Explique-moi mes risques avec l'IA"
+EXPLAIN_RISKS_REQUIRED = ("evaluate_portfolio", "check_profile_constraints")
+
+
+def explain_risks_task(profile_name: str) -> str:
+    """Consigne interne du bouton « Explique-moi mes risques avec l'IA » (même agent, même mécanisme que l'assistant)."""
+    return (
+        f"TÂCHE : explique à une personne non spécialiste, en français simple et en 250 mots maximum, les deux ou trois principaux risques du "
+        f"portefeuille A pour {profile_name}. Appelle evaluate_portfolio et check_profile_constraints (et get_profile si tu as besoin du profil). "
+        "Structure ta réponse avec ces cinq titres : **En bref** (deux phrases) ; **Pourquoi cela compte pour "
+        f"{profile_name}** (relie chaque enjeu à l'objectif et à l'horizon retournés par l'outil) ; **Les faits historiques utilisés** "
+        "(trois ou quatre puces, valeurs exactement telles que retournées par les outils, avec la période et la devise) ; **Pour aller plus loin** "
+        "(une piste d'exploration neutre, par exemple comparer avec une autre répartition ; jamais une recommandation d'achat ou de vente) ; "
+        "**Limites** (une ou deux limites pertinentes). Reprends les statuts tels que retournés par les outils : tu ne changes ni une valeur, "
+        "ni un repère, ni un statut. Évite le jargon : n'écris ni « seuil de conflit », ni « drawdown », ni « HHI », ni « règle R1 » ; "
+        "écris « repère de vigilance » (ou « repère pédagogique »), « plus forte baisse historique » et « fluctuations ». "
+        "Regroupe les constats liés : si la même position pèse lourd, est très fluctuante et explique les fluctuations du portefeuille, "
+        "présente-les comme UN enjeu et non comme trois risques indépendants. N'annonce jamais plus d'enjeux qu'il n'en existe réellement.")
+
+
 @dataclass
 class TurnResult:
     """Résultat d'UNE requête utilisateur. `turn` = numéro de requête (pas un cycle interne de Strands, voir `cycles`)."""
@@ -59,6 +79,7 @@ class TurnResult:
     context: dict = field(default_factory=dict)   # profil et portefeuilles A/B réellement utilisés pour cette requête
     clarification: str | None = None   # demande de précision à l'utilisateur (aucun appel au modèle ni aux outils)
     clarification_profiles: tuple = ()  # profils à proposer de sélectionner
+    kind: str = "question"                # "question" (assistant) ou "explain_risks" (bouton « Explique-moi mes risques »)
 
 
 def map_error(exc: BaseException) -> dict:
@@ -219,7 +240,7 @@ class GuardianAgent:
                                 system_prompt=SYSTEM_PROMPT, callback_handler=None)
         return self._agent
 
-    def ask(self, question: str) -> TurnResult:
+    def ask(self, question: str, task: str | None = None, required_tools: tuple = (), kind: str = "question") -> TurnResult:
         """Traite UNE requête utilisateur (= un « tour » de notre journal).
 
         - Une seule requête à la fois par agent (verrou) : les appels d'outils ne peuvent pas être
@@ -229,9 +250,11 @@ class GuardianAgent:
           exécutés pendant CETTE requête, quel que soit le nombre de cycles internes de Strands.
         """
         with self._ask_lock:
-            return self._ask_locked(question)
+            tr = self._ask_locked(question, task, tuple(required_tools))
+            tr.kind = kind
+            return tr
 
-    def compose_prompt(self, question: str) -> str:
+    def compose_prompt(self, question: str, task: str | None = None) -> str:
         """Reconstruit EXPLICITEMENT le contexte de la requête depuis l'interface (profil et disponibilité de A/B).
 
         Aucun poids ni résultat n'est transmis : le modèle doit les obtenir par les outils.
@@ -245,9 +268,9 @@ class GuardianAgent:
         return (f"[CONTEXTE DE L'INTERFACE, pas une question de l'utilisateur]\n"
                 f"Profil actif : {pid} ({name}).\nProfils autorisés pour cette requête : {', '.join(allowed)} "
                 f"(le profil actif, plus ceux que l'utilisateur nomme explicitement ; n'en utilise aucun autre).\nPortefeuille A : {'défini' if self.ctx.weights else 'non défini'}.\nPortefeuille B : {b}.\n"
-                f"[FIN DU CONTEXTE]\n\nQuestion de l'utilisateur : {question}")
+                f"[FIN DU CONTEXTE]\n\n" + (f"{task}\n\n" if task else "") + f"Question de l'utilisateur : {question}")
 
-    def _ask_locked(self, question: str) -> TurnResult:
+    def _ask_locked(self, question: str, task: str | None = None, required_tools: tuple = ()) -> TurnResult:
         turn = self.tracer.start_turn()
         context = self.ctx.snapshot()      # contexte figé au début de la requête
         started = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -272,7 +295,7 @@ class GuardianAgent:
             agent.messages.clear()          # requête indépendante : aucune mémoire des résultats d'outils précédents
             n_msgs = len(agent.messages)
             tools_before, usage_before, cycles_before = _tool_snapshot(agent), _usage_snapshot(agent), _cycles(agent)
-            result = agent(self.compose_prompt(question))
+            result = agent(self.compose_prompt(question, task))
             text = str(result).strip()
             after = _tool_snapshot(agent)
             sdk_delta = {n: {"calls": v["calls"] - tools_before.get(n, {}).get("calls", 0),
@@ -293,6 +316,11 @@ class GuardianAgent:
             withheld, reason, caveat = evaluate_turn(text or "", records, sdk_delta, self.service.profiles)
             if not (text or "").strip():
                 withheld, reason = True, "Le modèle a retourné une réponse vide."
+            missing = [n for n in required_tools if not any(r.tool == n and r.status == "ok" for r in records)]
+            if not withheld and missing:
+                withheld = True
+                reason = ("Les outils financiers attendus pour cette demande n'ont pas tous été exécutés avec succès (manquant : "
+                          f"{', '.join(missing)}). La réponse du modèle n'est pas affichée.")
         if withheld and agent is not None:
             del agent.messages[n_msgs:]   # ne pas réinjecter une réponse non validée dans le contexte
             text = None
