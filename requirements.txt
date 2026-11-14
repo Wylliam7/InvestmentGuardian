@@ -1,0 +1,9 @@
+# Python 3.11+ requis (strands-agents). Installation : uv venv --python 3.11 .venv && uv pip install -r requirements.txt
+pandas>=2.2
+numpy>=1.26
+plotly>=5.20
+streamlit>=1.40
+pyyaml>=6.0
+strands-agents>=1.0
+boto3>=1.35
+pytest>=8.0

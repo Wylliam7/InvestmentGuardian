@@ -1,0 +1,22 @@
+# Profils d'investisseurs fictifs.
+# Source : Datathon - Case Officiel 2026 FR.pdf, pages 4 à 7 (persona Robert, p. 7).
+# Les champs "heuristic_*" sont des choix de conception du prototype, pas des données officielles.
+version: "0.1-v0"
+profiles:
+  robert:
+    display_name: "Robert"
+    age: 59
+    occupation: "Professionnel de la santé"
+    experience: "Avancée"
+    risk_profile_label: "Faible à modéré"
+    horizon_years_min: 3
+    horizon_years_max: 5
+    objective: "Préserver son capital tout en maintenant un potentiel de croissance."
+    preferences:
+      - "Préfère les entreprises établies et les placements dont il comprend bien le modèle d'affaires."
+      - "Accorde de l'importance à la stabilité et à la qualité des entreprises."
+      - "Peu intéressé par les cryptoactifs."
+      - "Suit activement les marchés et s'intéresse aux nouvelles occasions d'investissement."
+      - "Peut être tenté par une entreprise très médiatisée, même si elle est plus risquée que ce qu'il recherche habituellement."
+    persona_test: "Le système sait-il remettre en question une demande incohérente avec le profil ?"
+    source: "Datathon - Case Officiel 2026 FR.pdf, p. 7"

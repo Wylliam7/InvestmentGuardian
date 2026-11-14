@@ -1,0 +1,4 @@
+[tool.pytest.ini_options]
+pythonpath = ["src", "app"]
+testpaths = ["tests"]
+markers = ["live: appelle réellement Amazon Bedrock (exécuter avec RUN_LIVE=1)"]

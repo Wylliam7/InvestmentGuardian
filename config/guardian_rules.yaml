@@ -1,0 +1,83 @@
+# Guardian Check — règles et seuils.
+# TOUS les seuils sont des HEURISTIQUES PÉDAGOGIQUES de ce prototype.
+# Ce ne sont ni des normes réglementaires, ni des recommandations financières universelles.
+# Politique : seuils fixés avant d'observer les résultats des portefeuilles de démonstration
+# (voir DECISIONS.md, section 0). Toute modification doit être justifiée par écrit.
+version: "0.1-v0"
+status: "heuristique"
+frozen_on: "2026-11-14"
+
+# Un actif est "historiquement volatil" si sa volatilité annualisée (CAD, fenêtre analysée)
+# dépasse ce seuil, ou s'il appartient à la classe crypto.
+volatile_asset_vol_threshold: 0.35
+
+rules:
+  R1:
+    title: "Concentration dans un actif"
+    metric: "Poids de la plus grande position"
+    unit: "fraction du portefeuille"
+    method: "max(poids_i) sur les poids cibles du portefeuille"
+    justification: >
+      Une position dominante expose le portefeuille aux événements propres à un seul émetteur.
+      Pour un profil axé sur la préservation du capital à horizon court, le prototype tolère une position unique plus petite.
+    limitations:
+      - "Ne tient pas compte de la corrélation entre actifs ni de l'exposition indirecte via les FNB (pas de look-through)."
+      - "Seuil heuristique, sans valeur normative."
+    thresholds:
+      robert: {attention: 0.10, conflict: 0.20}
+  R2:
+    title: "Exposition aux actifs historiquement volatils"
+    metric: "Somme des poids des actifs volatils (volatilité annualisée > seuil, ou crypto)"
+    unit: "fraction du portefeuille"
+    method: "somme des poids cibles des actifs dont la volatilité annualisée en CAD sur la fenêtre dépasse le seuil, ou de classe crypto"
+    justification: >
+      Les actifs très volatils ont connu de grandes variations de valeur sur la période observée.
+      Leur poids cumulé indique la part du portefeuille exposée à ce type de variations.
+    limitations:
+      - "La volatilité est calculée sur une seule fenêtre de cinq ans ; elle peut différer sur une autre période."
+      - "La volatilité passée n'est pas une prévision de la volatilité future."
+      - "Le seuil de classification des actifs est lui-même une heuristique."
+    thresholds:
+      robert: {attention: 0.10, conflict: 0.20}
+  R4:
+    title: "Volatilité du portefeuille"
+    metric: "Volatilité annualisée du portefeuille (CAD)"
+    unit: "fraction annualisée"
+    method: "écart-type des rendements quotidiens du portefeuille rééquilibré mensuellement x racine du facteur d'annualisation observé"
+    justification: >
+      La volatilité résume l'amplitude des variations quotidiennes. Pour un profil à tolérance faible à modérée,
+      le prototype considère comme élevée une volatilité nettement supérieure à celle d'un portefeuille diversifié classique.
+    limitations:
+      - "La volatilité n'est qu'un indicateur de risque parmi d'autres (horizon, diversification et préférences comptent aussi)."
+      - "Estimée sur cinq ans, avec un biais du survivant dans l'univers d'actifs."
+    thresholds:
+      robert: {attention: 0.10, conflict: 0.14}
+  R5:
+    title: "Perte historique maximale (drawdown)"
+    metric: "Valeur absolue du drawdown maximal"
+    unit: "fraction de la valeur du portefeuille"
+    method: "min(valeur / maximum cumulé de la valeur - 1) sur la fenêtre, pour le portefeuille rééquilibré mensuellement"
+    justification: >
+      Le drawdown maximal décrit la pire baisse depuis un sommet observée dans l'historique analysé.
+      Le persona Robert n'a pas de perte maximale acceptable explicite dans le cas officiel ;
+      les seuils sont donc des heuristiques liées à son objectif de préservation du capital et à son horizon de 3 à 5 ans.
+    limitations:
+      - "Une seule trajectoire historique ; un drawdown futur peut être plus important."
+      - "Pas de perte maximale acceptable saisie par l'investisseur dans cette version."
+    thresholds:
+      robert: {attention: 0.15, conflict: 0.25}
+
+general_limitations:
+  - "Simulation historique (2021-11-12 au 2026-11-12), pas une prévision. Les performances passées ne garantissent pas les résultats futurs."
+  - "Biais du survivant : l'univers d'actifs a été choisi en 2026 parmi des titres aujourd'hui importants."
+  - "Fenêtre unique de cinq ans ; les résultats dépendent des dates de début et de fin."
+  - "Pas de frais, d'impôts ni d'écarts achat-vente ; rendements avec réinvestissement des dividendes (adj_close)."
+  - "Calendrier commun TSX et marchés américains : les mouvements des cryptos les jours où les actions ne se négocient pas ne sont pas observés individuellement."
+  - "Les seuils du Guardian Check sont des heuristiques de démonstration, modifiables."
+
+missing_information:
+  - "Part de ce portefeuille dans le patrimoine total de l'investisseur."
+  - "Besoins de liquidité et date réelle de décaissement."
+  - "Perte maximale que l'investisseur accepterait réellement."
+  - "Comptes enregistrés, fiscalité et revenus de retraite."
+  - "Positions déjà détenues hors de ce portefeuille."

@@ -1,0 +1,7 @@
+# Empreintes SHA-256 des fichiers audités le 2026-11-14 (voir DATA_AUDIT.md).
+# Une différence n'empêche pas le chargement mais est signalée dans la fiche de provenance.
+audited_on: "2026-11-14"
+sha256:
+  assets_universe.csv: f78de8ecb36d914a3448db63498cc9a04a34d805bccb79c481dda1650755467d
+  prices_daily.csv: ff2a3f2d0a7d72ea835e8d616d041e0510f018340cef3d3e55b918830e8a569d
+  fx_usdcad_daily.csv: f04e218ac5b0145fd552b3d0dcfbf73e5e17bb9a6fb4562460dbec95cb8972b3

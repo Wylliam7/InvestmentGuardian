@@ -1,0 +1,9 @@
+# Portefeuilles fictifs prédéfinis (poids en pourcentage).
+presets:
+  robert_nvda_40:
+    label: "Robert — tenté par NVIDIA (scénario V0)"
+    profile_id: robert
+    weights_pct:
+      NVDA: 40
+      XBB.TO: 35
+      XIU.TO: 25

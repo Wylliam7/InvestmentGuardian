@@ -1,0 +1,42 @@
+# --- Secrets et identifiants (ne jamais versionner) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+credentials
+.aws/
+aws_credentials*
+secrets*
+*.secret
+
+# --- Environnements et caches Python ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+*.egg-info/
+build/
+dist/
+
+# --- Données officielles (licence : redistribution à confirmer, voir DECISIONS H-03) ---
+Datathon2026/
+data/raw/
+*.csv
+!config/*.csv
+
+# --- Fichiers de travail locaux ---
+scratch/
+tmp/
+*.log
+.DS_Store
+.streamlit/secrets.toml
+
+# --- Traces : seules les traces réelles revues manuellement sont ajoutées avec git add -f ---
+traces/*
+!traces/.gitkeep
