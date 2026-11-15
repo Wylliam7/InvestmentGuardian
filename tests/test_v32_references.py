@@ -4,6 +4,9 @@ import re
 
 import pytest
 import yaml
+
+pytestmark = pytest.mark.legacy_ui
+
 from conftest import REPO, StepModel
 from guardian.agent.agent import GuardianAgent
 from guardian.agent.tools import SessionContext, build_tools

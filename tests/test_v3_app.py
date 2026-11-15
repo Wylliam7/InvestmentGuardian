@@ -6,6 +6,8 @@ import re
 
 import pytest
 
+pytestmark = pytest.mark.legacy_ui
+
 from conftest import V2_MAIN_LABELS, v2_expected_metrics
 from guardian.finance.presets import load_presets
 from test_v2_app import all_text, click, patch_model, run_app

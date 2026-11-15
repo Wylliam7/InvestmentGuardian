@@ -56,9 +56,15 @@ def test_financial_engine_rules_data_and_thresholds_are_untouched_since_v1():
                            "src/guardian/rules", "src/guardian/data", "config/data_manifest.yaml"], cwd=REPO, capture_output=True, text=True)
     assert diff.stdout.strip() == "", diff.stdout
     def old(path):
-        return yaml.safe_load(subprocess.run(["git", "show", f"{V1_COMMIT}:{path}"], cwd=REPO, capture_output=True, text=True).stdout)
+        return yaml.safe_load(subprocess.run(
+            ["git", "show", f"{V1_COMMIT}:{path}"], cwd=REPO, capture_output=True,
+            text=True, encoding="utf-8", check=True,
+        ).stdout)
     cur_rules = yaml.safe_load((REPO / "config" / "guardian_rules.yaml").read_text(encoding="utf-8"))
-    old_rules = old("config/guardian_rules.yaml")
+    old_rules = yaml.safe_load(subprocess.run(
+        ["git", "show", f"{V1_COMMIT}:config/guardian_rules.yaml"],
+        cwd=REPO, capture_output=True, text=True, encoding="utf-8", check=True,
+    ).stdout)
     assert old_rules["volatile_asset_vol_threshold"] == cur_rules["volatile_asset_vol_threshold"]
     for rid, rule in old_rules["rules"].items():
         for prof, th in rule["thresholds"].items():                                         # seuils de Robert et d'Amira : valeurs identiques à V1

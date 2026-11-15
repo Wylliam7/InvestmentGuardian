@@ -9,7 +9,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from conftest import REPO, StepModel
-from guardian.agent import agent as agent_mod
+from guardian.agent_v5 import agent as agent_mod
 from guardian.agent.agent import GuardianAgent
 from guardian.agent.tools import SessionContext
 from guardian.agent.tracer import Tracer
@@ -118,12 +118,12 @@ def test_concurrent_requests_never_mix_their_records(real_service):
 # 6. interface : plusieurs requêtes affichées, libellés « Requête », aucune validation croisée
 def _patched_app(monkeypatch, steps):
     model = StepModel(steps)
-    original = agent_mod.GuardianAgent.__init__
+    original = agent_mod.AgentV5.__init__
 
     def patched(self, *a, **kw):
         kw["model_factory"] = lambda: model
         original(self, *a, **kw)
-    monkeypatch.setattr(agent_mod.GuardianAgent, "__init__", patched)
+    monkeypatch.setattr(agent_mod.AgentV5, "__init__", patched)
     return AppTest.from_file(str(REPO / "app" / "app.py"), default_timeout=60).run()
 
 
