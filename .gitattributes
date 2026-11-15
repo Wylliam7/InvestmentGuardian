@@ -1,0 +1,4 @@
+# Preserve the audited byte representation of the official data files.
+Datathon2026/alphaforge_starter/assets_universe.csv text eol=lf
+Datathon2026/alphaforge_starter/prices_daily.csv text eol=lf
+Datathon2026/alphaforge_starter/fx_usdcad_daily.csv text eol=lf
