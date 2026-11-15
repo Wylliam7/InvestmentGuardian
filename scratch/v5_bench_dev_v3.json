@@ -1,0 +1,742 @@
+[
+  {
+    "id": "Q1",
+    "type": "factuelle",
+    "persona": "amira",
+    "preset_a": "amira_tech_crypto",
+    "preset_b": null,
+    "question": "Quelles sont les trois plus grosses positions de mon portefeuille, quel est le poids de chacune et quel pourcentage total représentent-elles ? Explique ce que cela signifie pour ma diversification.",
+    "text": "Les trois plus grosses positions de votre portefeuille sont NVIDIA (NVDA) à 25 %, Invesco QQQ Trust (QQQ) à 25 % et Bitcoin (BTC-USD) à 20 %, représentant ensemble 70 % de votre portefeuille. Cela indique une forte concentration sur ces trois actifs, ce qui peut réduire la diversification. Les seuils du Guardian Check soulignent une attention pour la concentration sur une seule position et un conflit pour l'exposition aux actifs volatils et la volatilité du portefeuille, tandis que la diversification en nombre effectif de positions est conforme. Les seuils du Guardian Check sont des repères heuristiques, pas des normes absolues.",
+    "confirmed": true,
+    "notice": null,
+    "relaunched": true,
+    "provenance_ok": true,
+    "calls": [
+      {
+        "tool": "evaluate_portfolio",
+        "toolUseId": "tooluse_Uhca3h0uPNnPaefNYzIlJM",
+        "arguments": {
+          "portfolio": "A",
+          "start_date": "",
+          "end_date": ""
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      },
+      {
+        "tool": "check_profile_constraints",
+        "toolUseId": "tooluse_JGLJWpsDAEr31tzSSx45Wf",
+        "arguments": {
+          "profile_id": "amira",
+          "portfolio": "A",
+          "start_date": "",
+          "end_date": ""
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      }
+    ],
+    "usage": {
+      "inputTokens": 22841,
+      "outputTokens": 459,
+      "totalTokens": 23300
+    },
+    "cycles": 4,
+    "duration_s": 6.53,
+    "error": null,
+    "draft_text": "Les trois plus grosses positions de votre portefeuille sont :\n\n- **NVIDIA (NVDA)** avec un poids de **25 %**,\n- **Invesco QQQ Trust (QQQ)** avec un poids de **25 %**,\n- **Bitcoin (BTC-USD)** avec un poids de **20 %**.\n\nEnsemble, ces trois positions représentent **70 %** de votre portefeuille.\n\nLe Guardian Check met en **attention** la concentration sur une seule position (NVDA à 25 %) et en **conflit** l’exposition aux actifs volatils (75 % du portefeuille) ainsi que la volatilité du portefeuille (35,3 %). La diversification en nombre effectif de positions est **conforme** (5 positions effectives). Ces points soulignent des risques de forte variation et de dépendance à quelques actifs, qui peuvent être incompatibles avec une gestion prudente à long terme.\n\n**Limite** : Les seuils du Guardian Check sont des repères heuristiques, pas des normes absolues.",
+    "reviewed": true,
+    "review_usage": {
+      "inputTokens": 1087,
+      "outputTokens": 146,
+      "totalTokens": 1233
+    }
+  },
+  {
+    "id": "Q2",
+    "type": "hypothétique",
+    "persona": "amira",
+    "preset_a": "amira_tech_crypto",
+    "preset_b": null,
+    "question": "Si Nvidia et Bitcoin baissaient fortement en même temps, qu'est-ce que cela pourrait signifier pour mon portefeuille ?",
+    "text": "Si Nvidia et Bitcoin baissaient fortement en même temps, cela aurait un impact important sur votre portefeuille, car ces deux actifs représentent ensemble 45 % de votre portefeuille. Le portefeuille a déjà connu une baisse maximale historique de 56 % sur la période 2021-2026, montrant sa sensibilité aux mouvements de marché. La volatilité annualisée du portefeuille est de 35 %, ce qui est élevé et indique des fluctuations importantes attendues. Le portefeuille a aussi montré une capacité de récupération après sa pire baisse, avec un rendement cumulé historique de 151,9 % sur la même période. Le profil d'Amira est classé « Élevé » en termes de risque, ce qui correspond à une tolérance élevée pour la volatilité et les pertes temporaires en échange de rendements potentiellement plus élevés à long terme. Les performances passées ne garantissent pas les résultats futurs.",
+    "confirmed": true,
+    "notice": null,
+    "relaunched": false,
+    "provenance_ok": true,
+    "calls": [
+      {
+        "tool": "evaluate_portfolio",
+        "toolUseId": "tooluse_FkRFiMr7hWm2QgSMn1fQik",
+        "arguments": {
+          "portfolio": "A",
+          "start_date": "",
+          "end_date": ""
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      },
+      {
+        "tool": "check_profile_constraints",
+        "toolUseId": "tooluse_sKXCiPai7NVaVv7jBMBHz9",
+        "arguments": {
+          "profile_id": "amira",
+          "portfolio": "A",
+          "start_date": "",
+          "end_date": ""
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      }
+    ],
+    "usage": {
+      "inputTokens": 12731,
+      "outputTokens": 359,
+      "totalTokens": 13090
+    },
+    "cycles": 2,
+    "duration_s": 4.09,
+    "error": null,
+    "draft_text": "Si Nvidia et Bitcoin baissaient fortement en même temps, cela aurait un impact important sur votre portefeuille, car ces deux actifs représentent ensemble 45 % de votre portefeuille (25 % pour Nvidia et 20 % pour Bitcoin). Une baisse simultanée de ces deux positions pourrait entraîner une perte importante du portefeuille dans un court laps de temps.\n\nLe portefeuille a déjà connu une baisse maximale historique de 56 % sur la période 2021-2026, montrant sa sensibilité aux mouvements de marché. La volatilité annualisée du portefeuille est de 35 %, ce qui est élevé et indique des fluctuations importantes attendues.\n\nCependant, le portefeuille a aussi montré une capacité de récupération après sa pire baisse, et le rendement annualisé sur cinq ans est positif à 20 %. Le profil d'Amira est classé « Élevé » en termes de risque, ce qui correspond à une tolérance élevée pour la volatilité et les pertes temporaires en échange de rendements potentiellement plus élevés à long terme.\n\nEn résumé, une baisse simultanée de Nvidia et Bitcoin affecterait fortement le portefeuille à court terme, mais cela correspond à la stratégie de risque élevé et d'horizon long terme d'Amira. Aucune mesure spécifique n'est recommandée ici, car il s'agit d'une simulation historique et non d'un conseil d'investissement. Les performances passées ne garantissent pas les résultats futurs.",
+    "reviewed": true,
+    "review_usage": {
+      "inputTokens": 1341,
+      "outputTokens": 195,
+      "totalTokens": 1536
+    }
+  },
+  {
+    "id": "Q3",
+    "type": "risque",
+    "persona": "amira",
+    "preset_a": "amira_tech_crypto",
+    "preset_b": null,
+    "question": "Mon portefeuille est-il trop concentré dans la technologie par rapport à mes préférences ?",
+    "text": "Votre portefeuille inclut une part importante dans des actifs technologiques, avec NVDA à 25 %, QQQ à 25 % et BTC-USD à 20 %, totalisant 70 %. Le Guardian Check signale des conflits pour l'exposition aux actifs historiquement volatils à 75 %, la volatilité du portefeuille à 35,3 % et la plus forte baisse historique à 56 %. L'analyse ne décompose pas la composition sous-jacente de QQQ, donc l'exposition technologique totale n'est pas mesurée. Ces indicateurs reflètent des niveaux de risque élevés.",
+    "confirmed": true,
+    "notice": null,
+    "relaunched": false,
+    "provenance_ok": true,
+    "calls": [
+      {
+        "tool": "evaluate_portfolio",
+        "toolUseId": "tooluse_xDwerUKAqj6tjZLk2JLbIe",
+        "arguments": {
+          "portfolio": "A",
+          "start_date": "",
+          "end_date": ""
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      },
+      {
+        "tool": "check_profile_constraints",
+        "toolUseId": "tooluse_55kfGukmTE5W3lL8vztebk",
+        "arguments": {
+          "profile_id": "amira",
+          "portfolio": "A",
+          "start_date": "",
+          "end_date": ""
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      }
+    ],
+    "usage": {
+      "inputTokens": 12719,
+      "outputTokens": 238,
+      "totalTokens": 12957
+    },
+    "cycles": 2,
+    "duration_s": 4.08,
+    "error": null,
+    "draft_text": "Votre portefeuille présente une concentration technologique de 30 % en actions individuelles (NVDA et SHOP.TO), plus 25 % en QQQ, un FNB fortement technologique non décomposé. Aucun seuil n'est appliqué à cette part technologique dans la version actuelle du prototype. Cependant, le Guardian Check signale trois conflits potentiels : exposition élevée aux actifs volatils (75 %), volatilité du portefeuille (35,3 %) et plus forte baisse historique (56 %). Ces indicateurs suggèrent un risque accru qui pourrait ne pas correspondre parfaitement à vos préférences déclarées de diversification et d'évitement d'une concentration technologique exclusive.\n\nLimite importante : l'exposition technologique totale n'est pas mesurée, car la composition sous-jacente du FNB QQQ n'est pas analysée.",
+    "reviewed": true,
+    "review_usage": {
+      "inputTokens": 1026,
+      "outputTokens": 128,
+      "totalTokens": 1154
+    }
+  },
+  {
+    "id": "Q4",
+    "type": "risque",
+    "persona": "robert",
+    "preset_a": "robert_nvda_40",
+    "preset_b": null,
+    "question": "Robert veut garder 40 % de Nvidia : qu'en penser au regard de son horizon de placement et des limites des résultats historiques ?",
+    "text": "Robert, garder 40 % de Nvidia dans son portefeuille soulève des points à considérer selon son horizon de placement de 3 à 5 ans et les limites des résultats historiques. Nvidia représente une concentration importante, avec un poids de 40 % dans le portefeuille, ce qui dépasse les seuils de vigilance du Guardian Check pour la concentration dans un actif unique. Historiquement, cette position a généré un rendement élevé mais a aussi montré une forte volatilité. Le portefeuille dans son ensemble a connu une volatilité annualisée de 22,3 % et une baisse maximale de 36,1 %, ce qui est également au-dessus des seuils de conflit pour la volatilité et la perte maximale selon le profil de Robert. Ces éléments indiquent que la forte pondération et la volatilité élevée créent un risque de concentration et d'exposition à des fluctuations importantes. Les résultats historiques ne garantissent pas les performances futures, et les marchés peuvent évoluer de manière imprévisible.",
+    "confirmed": true,
+    "notice": null,
+    "relaunched": false,
+    "provenance_ok": true,
+    "calls": [
+      {
+        "tool": "get_profile",
+        "toolUseId": "tooluse_WD2c3kl6WHU1lV5Y97pccg",
+        "arguments": {
+          "profile_id": "robert"
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      },
+      {
+        "tool": "evaluate_portfolio",
+        "toolUseId": "tooluse_DqYHs7N3TX4NMjxopkMG0Z",
+        "arguments": {
+          "portfolio": "A",
+          "start_date": "",
+          "end_date": ""
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      },
+      {
+        "tool": "check_profile_constraints",
+        "toolUseId": "tooluse_GT9SoEMEnKnZo1joYdiQkX",
+        "arguments": {
+          "profile_id": "robert",
+          "portfolio": "A",
+          "start_date": "",
+          "end_date": ""
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      }
+    ],
+    "usage": {
+      "inputTokens": 12573,
+      "outputTokens": 344,
+      "totalTokens": 12917
+    },
+    "cycles": 2,
+    "duration_s": 4.46,
+    "error": null,
+    "draft_text": "Robert, garder 40 % de Nvidia dans son portefeuille soulève des points à considérer selon son horizon de placement de 3 à 5 ans et les limites des résultats historiques.\n\nNvidia représente une concentration importante, avec un poids de 40 % dans le portefeuille, ce qui dépasse les seuils de vigilance du Guardian Check pour la concentration dans un actif unique. Historiquement, cette position a généré un rendement élevé mais a aussi montré une forte volatilité, avec une baisse maximale de 63,46 % pour l'action elle-même. Le portefeuille dans son ensemble a connu une volatilité annualisée de 22,28 % et une baisse maximale de 36,14 %, ce qui est également au-dessus des seuils de conflit pour la volatilité et la perte maximale selon le profil de Robert.\n\nCes éléments indiquent que, bien que Nvidia ait performé bien en termes de rendement cumulé sur la période, sa forte pondération et sa volatilité élevée créent un risque de concentration et d'exposition à des fluctuations importantes, ce qui peut être préoccupant pour un profil axé sur la préservation du capital à moyen terme. Les résultats historiques ne garantissent pas les performances futures, et les marchés peuvent évoluer de manière imprévisible.",
+    "reviewed": true,
+    "review_usage": {
+      "inputTokens": 1134,
+      "outputTokens": 205,
+      "totalTokens": 1339
+    }
+  },
+  {
+    "id": "Q5",
+    "type": "comparaison",
+    "persona": "robert",
+    "preset_a": "robert_nvda_40",
+    "preset_b": "robert_prudent",
+    "question": "Compare les portefeuilles A et B pour Robert : quels compromis observe-t-on ?",
+    "text": "Pour Robert, les portefeuilles A et B présentent des compromis historiques clairs : le portefeuille A a généré un rendement cumulé plus élevé mais avec une volatilité plus forte et un drawdown maximal plus profond. Le portefeuille B a offert une croissance plus modérée mais avec une volatilité beaucoup plus faible et un drawdown maximal moins sévère. La diversification est également très différente, avec plus de positions effectives dans B contre moins dans A. Ces écarts reflètent un choix typique entre rendement potentiel et stabilité. La comparaison ne désigne pas un portefeuille à choisir - elle illustre simplement les différents profils de risque-rendement disponibles. Le choix dépendrait des préférences personnelles de Robert concernant le compromis risque-rendement, sa tolérance à la volatilité, et ses objectifs d'investissement spécifiques.",
+    "confirmed": true,
+    "notice": null,
+    "relaunched": false,
+    "provenance_ok": true,
+    "calls": [
+      {
+        "tool": "compare_scenarios",
+        "toolUseId": "tooluse_3XMfMQtTMdpDA3cKT9EJT3",
+        "arguments": {
+          "profile_id": "robert",
+          "start_date": "",
+          "end_date": ""
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      }
+    ],
+    "usage": {
+      "inputTokens": 14130,
+      "outputTokens": 354,
+      "totalTokens": 14484
+    },
+    "cycles": 2,
+    "duration_s": 4.55,
+    "error": null,
+    "draft_text": "Pour Robert, les portefeuilles A et B présentent des compromis historiques clairs : le portefeuille A a généré un rendement cumulé plus élevé (180,91 %) mais avec une volatilité plus forte (22,28 %) et un drawdown maximal plus profond (-36,14 %). Le portefeuille B a offert une croissance plus modérée (62,88 %) mais avec une volatilité beaucoup plus faible (6,86 %) et un drawdown maximal moins sévère (-8,43 %). La diversification est également très différente, avec 10 positions effectives dans B contre seulement 2,9 dans A.\n\nCes écarts reflètent un choix typique entre rendement potentiel et stabilité. Aucun des portefeuilles ne viole les seuils du Guardian Check pour Robert, bien que le portefeuille A présente des conflits potentiels sur la concentration, l'exposition aux actifs volatils, la volatilité globale et la diversification.\n\nIl est important de noter que ces observations sont basées sur des données historiques et ne prévoient pas les performances futures. Les rendements passés ne garantissent pas les résultats à venir, et les conditions de marché peuvent changer considérablement.\n\nLa comparaison ne désigne pas un portefeuille \"meilleur\" - elle illustre simplement les différents profils de risque-rendement disponibles dans cette simulation. Le choix entre A et B dépendrait des préférences personnelles de Robert concernant le compromis risque-rendement, sa tolérance à la volatilité, et ses objectifs d'investissement spécifiques.",
+    "reviewed": true,
+    "review_usage": {
+      "inputTokens": 1534,
+      "outputTokens": 181,
+      "totalTokens": 1715
+    }
+  },
+  {
+    "id": "Q6",
+    "type": "factuelle",
+    "persona": "robert",
+    "preset_a": "robert_nvda_40",
+    "preset_b": null,
+    "question": "Quelle a été la plus forte baisse historique de mon portefeuille, et quand ?",
+    "text": "La plus forte baisse historique de votre portefeuille a été de -36,1 %. Aucun repère ne permet de conclure sur la signification de ce mouvement par rapport à votre profil de risque.",
+    "confirmed": true,
+    "notice": null,
+    "relaunched": false,
+    "provenance_ok": true,
+    "calls": [
+      {
+        "tool": "evaluate_portfolio",
+        "toolUseId": "tooluse_qfmcfp8vzvwi1pP4u3yuxQ",
+        "arguments": {
+          "portfolio": "A",
+          "start_date": "",
+          "end_date": ""
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      }
+    ],
+    "usage": {
+      "inputTokens": 6699,
+      "outputTokens": 128,
+      "totalTokens": 6827
+    },
+    "cycles": 2,
+    "duration_s": 2.74,
+    "error": null,
+    "draft_text": "La plus forte baisse historique de votre portefeuille A a été de **36,14 %**. Elle a commencé le **29 novembre 2021** et a atteint son point bas le **14 octobre 2022** avant de se rétablir par la suite.\n\nCe mouvement reflète la volatilité des marchés pendant cette période, particulièrement affectée par les fluctuations des actions technologiques et des taux d’intérêt. Aucune prévision future n’est possible à partir de ces données historiques.",
+    "reviewed": true,
+    "review_usage": {
+      "inputTokens": 790,
+      "outputTokens": 41,
+      "totalTokens": 831
+    }
+  },
+  {
+    "id": "Q7",
+    "type": "ESG",
+    "persona": "mateo",
+    "preset_a": "mateo_actions_canadiennes",
+    "preset_b": null,
+    "question": "Pour Mateo, quelle est la différence entre les informations ESG concernant CNQ et celles concernant TD ?",
+    "text": "Pour Mateo, les informations ESG concernant CNQ indiquent une exclusion environnementale documentée, correspondant à 15 % du portefeuille. Pour TD, il y a une mise sous observation de gouvernance, représentant également 15 % du portefeuille, mais cette catégorie n'est pas directement liée à la préférence déclarée de Mateo. Aucune autre information ESG n’est disponible pour ces titres dans les sources consultées.",
+    "confirmed": true,
+    "notice": null,
+    "relaunched": false,
+    "provenance_ok": true,
+    "calls": [
+      {
+        "tool": "check_esg_preferences",
+        "toolUseId": "tooluse_ad3DyWXNDjGMbjcw9DLbS7",
+        "arguments": {
+          "profile_id": "mateo",
+          "portfolio": "A"
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      }
+    ],
+    "usage": {
+      "inputTokens": 9922,
+      "outputTokens": 253,
+      "totalTokens": 10175
+    },
+    "cycles": 2,
+    "duration_s": 3.21,
+    "error": null,
+    "draft_text": "Pour Mateo, les informations ESG concernant CNQ et TD sont les suivantes :\n\n- **CNQ (Canadian Natural Resources)** : Cette entreprise est **exclue** par la Banque de Norvège (NBIM) en raison d’**émissions de gaz à effet de serre jugées inacceptables**. Cela correspond directement à la préférence déclarée de Mateo d’éviter les entreprises liées à des controverses environnementales importantes. Le poids de CNQ dans le portefeuille est de 15 %.\n\n- **TD (Toronto-Dominion Bank)** : Cette entreprise est **mise sous observation** par la Banque de Norvège pour **corruption grave ou autre crime financier grave**. Cela concerne la dimension de gouvernance (G), qui n’est pas directement liée à la préférence déclarée de Mateo (qui se concentre sur les dimensions environnementale et sociale). Le poids de TD dans le portefeuille est de 15 %.\n\nAucune autre information ESG n’est disponible pour ces titres dans les sources consultées.",
+    "reviewed": true,
+    "review_usage": {
+      "inputTokens": 848,
+      "outputTokens": 85,
+      "totalTokens": 933
+    }
+  },
+  {
+    "id": "Q8",
+    "type": "ESG",
+    "persona": "mateo",
+    "preset_a": "mateo_croissance_equilibree",
+    "preset_b": null,
+    "question": "Mateo veut éviter les entreprises controversées. Ce portefeuille respecte-t-il ses préférences ESG ?",
+    "text": "Le portefeuille ne permet pas de vérifier si les préférences ESG de Mateo sont respectées. Les données disponibles sont insuffisantes pour conclure. Sur les 20 % du portefeuille en actions individuelles, aucune controverse n’a été identifiée dans les sources consultées. Cependant, 80 % du portefeuille sont des FNB dont la composition n’est pas disponible dans les données, rendant impossible la vérification des entreprises sous-jacentes. Les sources utilisées ne couvrent qu’une petite partie des actifs et ne représentent pas toutes les controverses possibles.",
+    "confirmed": true,
+    "notice": null,
+    "relaunched": false,
+    "provenance_ok": true,
+    "calls": [
+      {
+        "tool": "check_esg_preferences",
+        "toolUseId": "tooluse_WWzsZZl1AwJODg6Wr80eSw",
+        "arguments": {
+          "profile_id": "mateo",
+          "portfolio": "A"
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      }
+    ],
+    "usage": {
+      "inputTokens": 8474,
+      "outputTokens": 207,
+      "totalTokens": 8681
+    },
+    "cycles": 2,
+    "duration_s": 3.15,
+    "error": null,
+    "draft_text": "Le portefeuille A ne permet pas de vérifier si les préférences ESG de Mateo sont respectées. Les données disponibles sont insuffisantes pour conclure.\n\nSur les 20 % du portefeuille constitués d'actions individuelles, aucune controverse n'a été identifiée dans les sources consultées. Cependant, 80 % du portefeuille sont des FNB dont la composition n'est pas disponible dans les données. Il est donc impossible de vérifier les entreprises sous-jacentes et de confirmer qu'elles ne sont pas liées à des controverses environnementales ou sociales importantes.\n\nLes sources utilisées ne couvrent qu'une petite partie des actifs et ne représentent pas toutes les controverses possibles. Par conséquent, le portefeuille ne peut pas être considéré comme conforme aux préférences ESG de Mateo sur la base des informations disponibles.",
+    "reviewed": true,
+    "review_usage": {
+      "inputTokens": 774,
+      "outputTokens": 118,
+      "totalTokens": 892
+    }
+  },
+  {
+    "id": "Q9",
+    "type": "risque",
+    "persona": "mateo",
+    "preset_a": "mateo_croissance_equilibree",
+    "preset_b": null,
+    "question": "Quels repères du Guardian Check mon portefeuille dépasse-t-il, et lesquels respecte-t-il ?",
+    "text": "Votre portefeuille A pour Mateo franchit un seul seuil du Guardian Check : la concentration dans un actif (R1) est en Attention car la plus grande position représente 20 % du portefeuille, dépassant le seuil d'attention de 15 % (le seuil de conflit est à 30 %). Les autres critères sont tous Conformes : exposition aux actifs volatils (R2), volatilité du portefeuille (R4), perte maximale historique (R5) et diversification (R7). Aucun conflit n'est détecté.",
+    "confirmed": true,
+    "notice": null,
+    "relaunched": false,
+    "provenance_ok": true,
+    "calls": [
+      {
+        "tool": "check_profile_constraints",
+        "toolUseId": "tooluse_waciD7LGCaq2krwOJ0jZCY",
+        "arguments": {
+          "profile_id": "mateo",
+          "portfolio": "A",
+          "start_date": "",
+          "end_date": ""
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      }
+    ],
+    "usage": {
+      "inputTokens": 10307,
+      "outputTokens": 195,
+      "totalTokens": 10502
+    },
+    "cycles": 2,
+    "duration_s": 3.1,
+    "error": null,
+    "draft_text": "Votre portefeuille A pour Mateo franchit un seul seuil du Guardian Check : la concentration dans un actif (R1) est en **Attention** car la plus grande position représente 20 % du portefeuille, dépassant le seuil d'attention de 15 % (le seuil de conflit est à 30 %). Les autres critères sont tous **Conformes** : exposition aux actifs volatils (R2), volatilité du portefeuille (R4), perte maximale historique (R5) et diversification (R7). Aucun conflit n'est détecté.\n\nLe portefeuille respecte donc les repères de diversification, de volatilité et de baisse maximale du profil de Mateo, mais sa concentration sur quelques titres mérite une surveillance accrue.",
+    "reviewed": true,
+    "review_usage": {
+      "inputTokens": 1005,
+      "outputTokens": 116,
+      "totalTokens": 1121
+    }
+  },
+  {
+    "id": "Q10",
+    "type": "bouton",
+    "persona": "robert",
+    "preset_a": "robert_nvda_40",
+    "preset_b": null,
+    "question": "Explique-moi les principaux risques de mon portefeuille.",
+    "text": "Votre portefeuille présente plusieurs risques importants selon l'analyse du Guardian Check. La plus grande position représente 40 % du portefeuille, ce qui dépasse les seuils de conflit. Le portefeuille a connu une volatilité annualisée de 22,3 %, bien au-dessus du seuil de conflit de 14 %. La pire baisse historique du portefeuille a atteint 36,1 %, dépassant le seuil de conflit de 25 %. Le nombre effectif de positions est de seulement 2,9, bien en dessous du seuil de conflit de 4 positions. Ces risques sont tous en conflit avec les repères évalués, mais ils ne garantissent pas les risques futurs.",
+    "confirmed": true,
+    "notice": null,
+    "relaunched": false,
+    "provenance_ok": true,
+    "calls": [
+      {
+        "tool": "check_profile_constraints",
+        "toolUseId": "tooluse_0bUFAGRK4eOdf2o5MAkpP8",
+        "arguments": {
+          "profile_id": "robert",
+          "portfolio": "A",
+          "start_date": "",
+          "end_date": ""
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      }
+    ],
+    "usage": {
+      "inputTokens": 9945,
+      "outputTokens": 305,
+      "totalTokens": 10250
+    },
+    "cycles": 2,
+    "duration_s": 3.89,
+    "error": null,
+    "draft_text": "Votre portefeuille présente plusieurs risques importants selon l'analyse du Guardian Check. \n\n**Risque de concentration** : La plus grande position représente 40 % du portefeuille, ce qui dépasse largement les seuils recommandés. Cette concentration expose votre portefeuille à des événements propres à un seul émetteur.\n\n**Risque de volatilité** : Le portefeuille a connu une volatilité annualisée de 22,3 %, bien au-dessus du seuil de conflit de 14 %. Cela signifie que vos investissements ont subi des fluctuations de valeur importantes par le passé.\n\n**Risque de perte maximale** : La pire baisse historique du portefeuille a atteint 36,1 %, dépassant largement le seuil de conflit de 25 %. Cela montre que le portefeuille a connu une correction importante dans le passé.\n\n**Risque de faible diversification** : Le nombre effectif de positions est de seulement 2,9, bien en dessous du seuil de conflit de 4 positions. Cela signifie que votre portefeuille est trop concentré sur un petit nombre de positions.\n\nCes risques sont tous en **conflit** avec votre profil d'investissement déclaré. La simulation historique montre que ces risques ont été réels par le passé, mais ils ne garantissent pas les risques futurs.",
+    "reviewed": true,
+    "review_usage": {
+      "inputTokens": 1106,
+      "outputTokens": 145,
+      "totalTokens": 1251
+    }
+  },
+  {
+    "id": "Q11",
+    "type": "bouton",
+    "persona": "mateo",
+    "preset_a": "mateo_croissance_equilibree",
+    "preset_b": null,
+    "question": "Explique-moi les principaux risques de mon portefeuille.",
+    "text": "Les principaux risques de votre portefeuille A incluent une concentration de 20 % dans une seule position (XIU.TO), ce qui représente un point d'attention. La volatilité du portefeuille est de 9,6 % et la plus forte baisse historique est de 15,5 %, toutes deux conformes aux seuils du prototype. Le nombre effectif de positions est de 6,7, également conforme. Ces mesures sont basées sur des données historiques et n'indiquent pas les risques futurs. Il est important de considérer que les événements futurs peuvent affecter différemment votre portefeuille.",
+    "confirmed": true,
+    "notice": null,
+    "relaunched": false,
+    "provenance_ok": true,
+    "calls": [
+      {
+        "tool": "check_profile_constraints",
+        "toolUseId": "tooluse_dUiG67Pw5XFteSoVRYwOpq",
+        "arguments": {
+          "profile_id": "mateo",
+          "portfolio": "A",
+          "start_date": "",
+          "end_date": ""
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      }
+    ],
+    "usage": {
+      "inputTokens": 10287,
+      "outputTokens": 458,
+      "totalTokens": 10745
+    },
+    "cycles": 2,
+    "duration_s": 5.06,
+    "error": null,
+    "draft_text": "Les principaux risques de votre portefeuille A, selon l'analyse du Guardian Check, sont les suivants :\n\n**Concentration dans un actif** : Votre portefeuille présente un point d'attention avec une concentration de 20 % dans une seule position (XIU.TO). Cela signifie que votre portefeuille est exposé aux événements propres à un seul émetteur, ce qui peut augmenter la volatilité si cet émetteur rencontre des difficultés.\n\n**Volatilité du portefeuille** : Bien que la volatilité du portefeuille soit conforme aux seuils du prototype (9,6 %), il est important de noter que la volatilité est un indicateur de risque. Une volatilité plus élevée signifie que le portefeuille peut subir des fluctuations de valeur plus importantes.\n\n**Perte historique maximale (drawdown)** : La plus forte baisse historique du portefeuille est de 15,5 %, ce qui est conforme aux seuils du prototype. Cependant, cela indique la pire baisse depuis un sommet observée dans l'historique analysé. Il est important de comprendre que les pertes futures peuvent être plus importantes ou plus faibles.\n\n**Diversification** : Le nombre effectif de positions est de 6,7, ce qui est conforme aux seuils du prototype. Cela signifie que votre portefeuille est suffisamment diversifié en termes de nombre de positions, mais il est toujours important de surveiller la diversification sous-jacente des FNB, qui n'est pas mesurée ici.\n\nEn résumé, bien que votre portefeuille soit globalement conforme aux seuils du prototype, la concentration dans un actif est un point d'attention important à surveiller. Il est également essentiel de comprendre que ces mesures sont basées sur des données historiques et ne garantissent pas les résultats futurs.\n\n**Limite importante** : Ces mesures sont des indicateurs de risque basés sur des données historiques et des seuils heuristiques. Elles ne prédisent pas les risques futurs et ne tiennent pas compte de tous les facteurs qui pourraient affecter votre portefeuille.",
+    "reviewed": true,
+    "review_usage": {
+      "inputTokens": 1257,
+      "outputTokens": 130,
+      "totalTokens": 1387
+    }
+  },
+  {
+    "id": "DIV",
+    "type": "diversification",
+    "persona": "amira",
+    "preset_a": "amira_tech_crypto",
+    "preset_b": null,
+    "question": "Mon portefeuille contient six positions. Est-ce que cela signifie automatiquement que je suis bien diversifiée ? Explique la différence entre le nombre de positions et les risques auxquels je suis exposée.",
+    "text": "Avoir six positions ne garantit pas une bonne diversification. Dans votre portefeuille, les trois plus grandes positions représentent 70 % du portefeuille, montrant une forte dépendance à ces actifs. Les cryptomonnaies ajoutent une volatilité élevée, tandis que le FNB QQQ apporte une exposition au marché technologique américain. La diversification véritable dépend non seulement du nombre de positions, mais aussi de la répartition des risques et de la corrélation entre les actifs.",
+    "confirmed": true,
+    "notice": null,
+    "relaunched": true,
+    "provenance_ok": true,
+    "calls": [
+      {
+        "tool": "evaluate_portfolio",
+        "toolUseId": "tooluse_n4NVZFhpnEckCCvjQJVwK5",
+        "arguments": {
+          "portfolio": "A",
+          "start_date": "",
+          "end_date": ""
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      },
+      {
+        "tool": "check_profile_constraints",
+        "toolUseId": "tooluse_NRx176VCJnQxTJ6JyPsKqi",
+        "arguments": {
+          "profile_id": "amira",
+          "portfolio": "A",
+          "start_date": "",
+          "end_date": ""
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      }
+    ],
+    "usage": {
+      "inputTokens": 22775,
+      "outputTokens": 466,
+      "totalTokens": 23241
+    },
+    "cycles": 4,
+    "duration_s": 5.73,
+    "error": null,
+    "draft_text": "Avoir six positions ne garantit pas une bonne diversification. Dans votre portefeuille, le nombre effectif de positions est de 5,0, ce qui indique une certaine concentration. Les trois plus grandes positions (NVDA, QQQ et BTC-USD) représentent 70 % du portefeuille, montrant une forte dépendance à ces actifs. Les cryptomonnaies (BTC-USD et ETH-USD) ajoutent une volatilité élevée, tandis que le FNB QQQ apporte une exposition au marché technologique américain. La diversification véritable dépend non seulement du nombre de positions, mais aussi de la répartition des risques et de la corrélation entre les actifs.\n\nLe Guardian Check identifie trois conflits potentiels : l'exposition aux actifs volatils (75 % du portefeuille dépasse le seuil de 50 %), la volatilité du portefeuille (35,3 % dépasse le seuil de 35 %) et la plus forte baisse historique (56 % dépasse le seuil de 55 %). Le critère de concentration dans un actif est en état d'attention (25 % dépasse le seuil de 20 %). La diversification en nombre effectif de positions est conforme (5,0 positions effectives).",
+    "reviewed": true,
+    "review_usage": {
+      "inputTokens": 1131,
+      "outputTokens": 102,
+      "totalTokens": 1233
+    }
+  },
+  {
+    "id": "AG1",
+    "type": "agentique",
+    "persona": "robert",
+    "preset_a": "robert_nvda_40",
+    "preset_b": "robert_prudent",
+    "question": "Comment le portefeuille B s'est-il comporté depuis le 1er janvier 2024 ?",
+    "text": "Le portefeuille B a enregistré un rendement cumulé de 52,6 % sur la période du 2 janvier 2024 au 12 novembre 2026. La volatilité annualisée du portefeuille était de 6,7 %, et sa plus forte baisse a atteint -5,9 %. La plus grande position représente 15 % du portefeuille, et le nombre effectif de positions est d’environ 10. La composition comprend des obligations canadiennes et américaines, des actions canadiennes et américaines, ainsi que des actions en or. Aucune information ne permet d’évaluer ces éléments par rapport aux repères configurés.",
+    "confirmed": true,
+    "notice": null,
+    "relaunched": false,
+    "provenance_ok": true,
+    "calls": [
+      {
+        "tool": "evaluate_portfolio",
+        "toolUseId": "tooluse_ZU3nlBla3u9mpW0YnWbfBp",
+        "arguments": {
+          "portfolio": "B",
+          "start_date": "2024-01-01",
+          "end_date": ""
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      }
+    ],
+    "usage": {
+      "inputTokens": 7860,
+      "outputTokens": 245,
+      "totalTokens": 8105
+    },
+    "cycles": 2,
+    "duration_s": 3.61,
+    "error": null,
+    "draft_text": "Le portefeuille B a enregistré un rendement cumulé de **52,64 %** sur la période du 2 janvier 2024 au 12 novembre 2026, ce qui équivaut à un rendement annualisé de **15,93 %**. La volatilité annualisée du portefeuille était de **6,67 %**, et sa plus forte baisse a atteint **-5,91 %**. La composition du portefeuille comprend des obligations canadiennes et américaines, des actions canadiennes et américaines, ainsi que des actions en or, avec une plus grande position de **15 %** dans le FNB d'obligations canadiennes (XBB.TO). La diversification est mesurée par un nombre effectif de positions de **10**, ce qui est conforme aux repères du prototype pour le profil de Robert.\n\n**Limite importante** : il s'agit d'une simulation historique ; les performances passées ne garantissent pas les résultats futurs.",
+    "reviewed": true,
+    "review_usage": {
+      "inputTokens": 910,
+      "outputTokens": 137,
+      "totalTokens": 1047
+    }
+  },
+  {
+    "id": "AG2",
+    "type": "agentique",
+    "persona": "amira",
+    "preset_a": "amira_tech_crypto",
+    "preset_b": null,
+    "question": "Si Robert détenait mon portefeuille, quels repères du Guardian Check dépasserait-il, comparé à moi, Amira ?",
+    "text": "Si Robert avait détenu votre portefeuille, il dépasserait les repères du Guardian Check sur quatre critères : concentration dans un actif, exposition aux actifs historiquement volatils, volatilité du portefeuille et perte historique maximale. Amira, avec son profil de risque élevé et son horizon long, n’a que des points d’attention, pas de conflits. La limite principale est que ces seuils sont des heuristiques de démonstration, pas des normes fixes.",
+    "confirmed": true,
+    "notice": null,
+    "relaunched": false,
+    "provenance_ok": true,
+    "calls": [
+      {
+        "tool": "get_profile",
+        "toolUseId": "tooluse_2Kg5aRlugs6YRjhNV0USGS",
+        "arguments": {
+          "profile_id": "amira"
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      },
+      {
+        "tool": "get_profile",
+        "toolUseId": "tooluse_kmxw6Zv0ZZSVSGj6fnagI9",
+        "arguments": {
+          "profile_id": "robert"
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      },
+      {
+        "tool": "check_profile_constraints",
+        "toolUseId": "tooluse_Wb3uotTcxWotr8UKY9uplS",
+        "arguments": {
+          "profile_id": "amira",
+          "portfolio": "A",
+          "start_date": "",
+          "end_date": ""
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      },
+      {
+        "tool": "check_profile_constraints",
+        "toolUseId": "tooluse_n38VyUWhh6qzu3wzw2rzEh",
+        "arguments": {
+          "profile_id": "robert",
+          "portfolio": "A",
+          "start_date": "",
+          "end_date": ""
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      }
+    ],
+    "usage": {
+      "inputTokens": 16801,
+      "outputTokens": 249,
+      "totalTokens": 17050
+    },
+    "cycles": 2,
+    "duration_s": 3.02,
+    "error": null,
+    "draft_text": "Si Robert avait détenu votre portefeuille, il dépasserait les repères du Guardian Check sur quatre critères : concentration dans un actif, exposition aux actifs historiquement volatils, volatilité du portefeuille et perte historique maximale. Ces dépassements indiquent des conflits potentiels avec ses objectifs de préservation du capital et d’horizon court à moyen terme. En revanche, Amira, avec son profil de risque élevé et son horizon long, n’a que des points d’attention, pas de conflits. \n\nLa limite principale est que ces seuils sont des heuristiques de démonstration, pas des normes fixes.",
+    "reviewed": true,
+    "review_usage": {
+      "inputTokens": 996,
+      "outputTokens": 99,
+      "totalTokens": 1095
+    }
+  },
+  {
+    "id": "AG3",
+    "type": "agentique",
+    "persona": "robert",
+    "preset_a": "robert_nvda_40",
+    "preset_b": null,
+    "question": "Quelle a été la plus forte baisse de mon portefeuille sur l'année 2022 seulement ?",
+    "text": "La plus forte baisse de votre portefeuille sur l'année 2022 a été de -33,1 %.",
+    "confirmed": true,
+    "notice": null,
+    "relaunched": false,
+    "provenance_ok": true,
+    "calls": [
+      {
+        "tool": "evaluate_portfolio",
+        "toolUseId": "tooluse_nCjMfVaTw7IkIyea6hpw7Z",
+        "arguments": {
+          "portfolio": "A",
+          "start_date": "2022-01-01",
+          "end_date": "2022-12-31"
+        },
+        "status": "ok",
+        "reused_from": null,
+        "error": null
+      }
+    ],
+    "usage": {
+      "inputTokens": 6729,
+      "outputTokens": 174,
+      "totalTokens": 6903
+    },
+    "cycles": 2,
+    "duration_s": 3.42,
+    "error": null,
+    "draft_text": "La plus forte baisse de votre portefeuille sur l'année 2022 a été de **-33,07 %**. Cette baisse s'est produite entre le **4 janvier 2022** (pic) et le **14 octobre 2022** (creux), et le portefeuille n'a pas récupéré cette perte d'ici la fin de l'année.\n\nCe résultat provient des données historiques simulées de votre portefeuille A sur la période demandée. Aucune prévision ou extrapolation n'est incluse : il s'agit uniquement d'une mesure passée.",
+    "reviewed": true,
+    "review_usage": {
+      "inputTokens": 809,
+      "outputTokens": 25,
+      "totalTokens": 834
+    }
+  }
+]
