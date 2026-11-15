@@ -377,7 +377,9 @@ def test_agent_really_calls_the_esg_tool_and_the_trace_matches(real_service):
     ag, model, _ = make_agent(real_service, "mateo", [("tools", [ESG]), ("text", "Je ne peux pas confirmer que ce portefeuille respecte toutes les préférences ESG de Mateo.")])
     tr = ag.ask("Mateo veut éviter les entreprises controversées. Est-ce que ce portefeuille respecte ses préférences ESG ?")
     assert tr.clarification is None and not tr.withheld and [r.tool for r in tr.tool_records] == [ESG] and tr.tool_records[0].status == "ok"
-    assert tr.tool_records[0].result == {**real_service.check_esg(MATEO_A, "mateo").to_dict(), "portfolio": "A", "profile": real_service.profiles["mateo"]}
+    from guardian.agent.tools import esg_key_facts
+    base = real_service.check_esg(MATEO_A, "mateo").to_dict()
+    assert tr.tool_records[0].result == {**base, "key_facts": esg_key_facts(base), "portfolio": "A", "profile": real_service.profiles["mateo"]}
     assert "Profil actif : mateo (Mateo)" in model.prompts[0]
 
 
@@ -451,7 +453,8 @@ def test_unmatched_percentages_ignores_failed_tools_and_other_requests():
 
 
 def test_agent_warns_when_the_text_cites_a_percentage_not_in_the_tool_results(real_service):
-    ag, _, _ = make_agent(real_service, "mateo", [("tools", [ESG]), ("text", "Environ 25 % du portefeuille a été vérifié. Je ne peux pas confirmer le reste.")])
+    """Pourcentage SANS ancre identifiable dans la phrase : contrôle de cohérence global (avertissement). Avec ancre (V3.3) : voir test_v33_claims.py."""
+    ag, _, _ = make_agent(real_service, "mateo", [("tools", [ESG]), ("text", "Environ 25 % de cet ensemble appelle une lecture prudente. Je ne peux pas confirmer le reste.")])
     tr = ag.ask("Ce portefeuille respecte-t-il les préférences ESG ?")
     assert not tr.withheld and tr.text and tr.unmatched_numbers == ("25 %",)
     assert "n'ont pas été retrouvés tels quels dans les résultats des outils" in tr.caveat and "25 %" in tr.caveat
@@ -467,12 +470,11 @@ def test_system_prompt_covers_the_defects_seen_in_live_esg_answers():
     assert "aucune émotion, aucun besoin ni aucune situation absents du profil" in SYSTEM_PROMPT
 
 
-def test_numeric_check_cannot_catch_a_coincidental_match_known_limitation(real_service):
-    """LIMITE DOCUMENTÉE : « 20 % » (somme erronée vue en test live, 15 % vérifiés + 5 % sans objet) n'est pas signalé pour ce portefeuille,
-    car 20 figure légitimement dans les résultats (poids de XIU.TO). Le contrôle est une cohérence, pas une preuve."""
+def test_coincidental_match_is_now_caught_when_the_percentage_is_anchored_to_a_category(real_service):
+    """V3.2 : « 20 % vérifié » passait car 20 figure ailleurs (poids de XIU.TO). V3.3 : le pourcentage est rattaché à la couverture ESG et refusé."""
     ag, _, _ = make_agent(real_service, "mateo", [("tools", [ESG]), ("text", "Environ 20 % du portefeuille a été vérifié.")])
     tr = ag.ask("Ce portefeuille respecte-t-il les préférences ESG ?")
-    assert tr.unmatched_numbers == () and tr.caveat is None
+    assert tr.withheld and tr.text is None and tr.fallback and any(v["category"] == "valeur_associee" for v in tr.claims["violations"])
 
 
 def test_uncertainty_counts_only_the_sources_actually_used_for_the_portfolio(real_service):

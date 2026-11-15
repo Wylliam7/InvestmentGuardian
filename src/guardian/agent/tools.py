@@ -14,6 +14,7 @@ from strands import tool
 from guardian.agent.service import GuardianService
 from guardian.agent.tracer import Tracer, digest, sanitize
 from guardian.explain.funds import fund_exposure
+from guardian.rules.engine import tech_share
 
 ERROR_INSTRUCTION = ("L'outil a échoué. N'avance aucun chiffre ni conclusion financière ; "
                      "indique seulement que l'analyse n'a pas pu être réalisée et rapporte le message d'erreur.")
@@ -67,6 +68,109 @@ def _run(tracer: Tracer, ctx: SessionContext, name: str, arguments: dict, fn) ->
 def _funds(service: GuardianService, res) -> dict:
     """Contexte FNB (texte et indicateurs) : n'altère ni les poids, ni le HHI, ni les statuts."""
     return fund_exposure(res.weights, service.bundle.universe, res.concentration.max_ticker, res.concentration.max_weight)
+
+
+LINE_TYPES = {"equity": "action individuelle", "etf_equity": "FNB d'actions", "etf_bond": "FNB d'obligations", "etf_commodity": "fonds adossé à l'or",
+              "crypto": "cryptoactif"}
+FACTS_RULE = ("Faits déjà calculés par Python : recopie-les tels quels. N'additionne pas et ne recalcule pas d'autres pourcentages ; "
+              "si une mesure n'apparaît pas ici ni ailleurs dans le résultat, dis qu'elle n'est pas mesurée.")
+
+
+CLASS_LABELS = {"equity": "actions individuelles", "etf_equity": "FNB d'actions", "etf_bond": "FNB d'obligations", "etf_commodity": "fonds adossé à l'or",
+                "crypto": "cryptoactifs"}
+
+
+def _class_breakdown(out: dict, universe) -> dict:
+    """Répartition par classe d'actifs du moteur (asset_class_exposure_pct) avec les titres de chaque classe ; aucune nouvelle mesure."""
+    w = out.get("weights_pct") or {}
+    members: dict = {}
+    for t in w:
+        members.setdefault(str(universe.loc[t, "asset_class"]), []).append(t)
+    exp = out.get("asset_class_exposure_pct") or {c: round(sum(w[t] for t in ts), 2) for c, ts in members.items()}
+    return {"classes": [{"classe": CLASS_LABELS.get(c, c), "pct": v, "titres": members.get(c, [])} for c, v in sorted(exp.items(), key=lambda kv: -kv[1])],
+            "note": "Chaque titre n'appartient qu'à une classe : les FNB d'actions (par exemple QQQ) ne sont pas inclus dans les actions individuelles."}
+
+
+def portfolio_key_facts(out: dict, universe, findings: list | None = None) -> dict:
+    """Faits structurés d'un portefeuille, repris des résultats du moteur (aucun nouveau calcul financier : tri des poids et égalités seulement)."""
+    w = out.get("weights_pct") or {}
+    ranked = sorted(w.items(), key=lambda kv: (-kv[1], kv[0]))
+    third = ranked[min(2, len(ranked) - 1)][1] if ranked else None
+    tied = [t for t, v in ranked if v == third]
+    above = [t for t, v in ranked if third is not None and v > third]
+    c, m, win = out.get("concentration") or {}, out.get("metrics") or {}, out.get("window") or {}
+    top = [{"rank": i + 1, "ticker": t, "name": str(universe.loc[t, "name"]), "weight_pct": v,
+            "line_type": LINE_TYPES.get(str(universe.loc[t, "asset_class"]), str(universe.loc[t, "asset_class"]))} for i, (t, v) in enumerate(ranked[:3])]
+    facts = {
+        "rule": FACTS_RULE,
+        "top_positions": top, "top3_total_pct": c.get("top3_weight_pct"),
+        "top3_ties": (None if len(above) + len(tied) <= 3 else
+                      f"Égalité : {', '.join(tied)} pèsent chacun {third} % ; seules {3 - len(above)} d'entre elles entrent dans les trois plus grandes "
+                      f"positions, le choix est arbitraire. Le total des trois plus grandes positions reste {c.get('top3_weight_pct')} %."),
+        "répartition_par_classe": _class_breakdown(out, universe),
+        "indicators": {"période": f"{win.get('start')} au {win.get('end')} (CAD, historique)",
+                       "rendement cumulé (%)": m.get("cumulative_return_pct"), "rendement annualisé (%)": m.get("annualized_return_pct"),
+                       "volatilité annualisée du portefeuille (%)": m.get("annualized_volatility_pct"),
+                       "plus forte baisse historique du portefeuille (%)": m.get("max_drawdown_pct"),
+                       "plus grande position (%)": c.get("largest_position_weight_pct"),
+                       "nombre effectif de positions (lignes, pas entreprises)": c.get("effective_number_of_positions")},
+    }
+    if findings is not None:
+        facts["guardian_findings"] = [{"règle": f["rule_id"], "critère": f["title"], "statut": f["status_label"], "mesuré": (f.get("display") or {}).get("measured"),
+                                       "repère d'attention": (f.get("display") or {}).get("attention"), "repère de conflit": (f.get("display") or {}).get("conflict")}
+                                      for f in findings if f.get("status") != "INFO"]
+        ev10 = next((f.get("evidence") or {} for f in findings if f.get("rule_id") == "R10"), {})
+        if ev10.get("tech_share_pct") is not None:
+            facts["technology"] = technology_facts(ev10["tech_share_pct"], ev10.get("tech_positions", []), ev10.get("qqq_weight_pct") or 0.0)
+    return facts
+
+
+def active_profile_facts(service: GuardianService, pid: str) -> dict:
+    """Profil officiel actif et repères de concentration de la configuration (aucun calcul ; les statuts restent dans check_profile_constraints)."""
+    p = service.profiles[pid]
+    rules = service.rules_cfg["rules"]
+    pct = lambda x: f"{100 * x:g} %"  # noqa: E731
+    r1, r7 = rules["R1"]["thresholds"][pid], rules["R7"]["thresholds"][pid]
+    return {
+        "persona": p["display_name"], "âge": p.get("age"), "niveau_de_risque": p["risk_profile_label"],
+        "horizon": (f"{p['horizon_years_min']} à {p['horizon_years_max']} ans" if p.get("horizon_years_max") else f"{p['horizon_years_min']} ans ou plus"),
+        "repères_concentration_plus_grande_position": {"attention": f"> {pct(r1['attention'])}", "conflit": f"> {pct(r1['conflict'])}"},
+        "repères_nombre_effectif_de_positions": {"attention": f"< {r7['attention']:g}", "conflit": f"< {r7['conflict']:g}"},
+        "note": "Repères heuristiques du prototype pour ce profil. Les statuts (vigilance, conflit) sont donnés par check_profile_constraints.",
+    }
+
+
+def technology_facts(share_pct: float, tickers: list, qqq_pct: float) -> dict:
+    """Part technologique telle que mesurée par le moteur (R10 / rules.engine.tech_share), avec ce qu'elle ne mesure pas."""
+    return {
+        "part_directe_mesurée_pct": share_pct, "titres_comptés": list(tickers), "QQQ_pct_non_décomposé": qqq_pct,
+        "exposition_technologique_totale_mesurée": False,
+        "à_dire": ("La part directement mesurée est celle des titres étiquetés technologie ou communication. QQQ est un FNB fortement technologique "
+                   "mais pas entièrement : ces deux nombres ne s'additionnent pas. L'exposition technologique totale n'est pas mesurée, et aucun seuil "
+                   "n'est appliqué à la part technologique."),
+    }
+
+
+def esg_key_facts(out: dict) -> dict | None:
+    """Faits ESG structurés repris du module ESG (aucune nouvelle donnée)."""
+    if not out.get("applicable"):
+        return None
+    cov = out["coverage"]
+    lines = out.get("lines") or []
+    by_state = lambda s: [x["ticker"] for x in lines if x["state"] == s]  # noqa: E731
+    na, ins = by_state("NOT_APPLICABLE"), by_state("INSUFFICIENT")
+    cats = [{"catégorie": c["label"], "décision": c["decision_label"], "dimension": c["dimension_label"], "titres": c["tickers"], "poids_pct": c["weight_pct"],
+             "dates_de_décision": sorted({r["published"] for r in c["records"]}), "lien_avec_la_préférence_déclarée": c["relevance"] == "direct"}
+            for c in [*out.get("documented_categories", []), *out.get("complementary_information", [])]]
+    return {
+        "rule": FACTS_RULE,
+        "couverture_pct (part cherchée dans au moins une source)": cov.get("checked_in_sources_pct"),
+        "cherché_sans_correspondance_pct (ce n'est ni la couverture ni une conformité)": cov["weights_by_state_pct"].get("Aucune controverse identifiée dans les sources consultées", 0.0),
+        "non_évaluable_pct (FNB sans composition, non vérifiés)": (out.get("fund_verification") or {}).get("weight_pct", 0.0), "non_évaluables": ins,
+        "sans_objet (non vérifiés, sans entreprise émettrice)": na,
+        "catégories_documentées (ne s'additionnent pas)": cats,
+        "seuils_ESG": "aucun : le module ESG n'utilise ni seuil ni score",
+    }
 
 
 def _profile(service: GuardianService, ctx: SessionContext, profile_id: str) -> str:
@@ -135,6 +239,11 @@ def build_tools(service: GuardianService, ctx: SessionContext, tracer: Tracer) -
             res = service.analyze(w, start_date or None, end_date or None)
             out = res.to_tool_dict()
             out["fund_exposure"] = _funds(service, res)
+            out["key_facts"] = portfolio_key_facts(out, service.bundle.universe)
+            out["key_facts"]["profil_actif"] = active_profile_facts(service, ctx.profile_id)
+            if service.profiles.get(ctx.profile_id, {}).get("show_sector_context"):
+                share, tickers, qqq = tech_share(res, service.rules_cfg.get("tech_sectors", []))
+                out["key_facts"]["technology"] = technology_facts(round(100 * share, 2), tickers, round(100 * qqq, 2))
             out["portfolio"] = label
             return out
 
@@ -166,6 +275,7 @@ def build_tools(service: GuardianService, ctx: SessionContext, tracer: Tracer) -
             out.update({"profile": service.profiles[pid], "portfolio": label, "window": full["window"],
                         "weights_pct": full["weights_pct"], "metrics": full["metrics"], "concentration": full["concentration"],
                         "provenance": res.provenance, "fund_exposure": _funds(service, res)})
+            out["key_facts"] = portfolio_key_facts(out, service.bundle.universe, out["findings"])
             return out
 
         return _run(tracer, ctx, "check_profile_constraints", args, run)
@@ -193,6 +303,8 @@ def build_tools(service: GuardianService, ctx: SessionContext, tracer: Tracer) -
             out = cmp_.to_tool_dict()
             out["portfolio_A"]["fund_exposure"] = _funds(service, cmp_.a)
             out["portfolio_B"]["fund_exposure"] = _funds(service, cmp_.b)
+            for key, g in (("portfolio_A", "guardian_A"), ("portfolio_B", "guardian_B")):
+                out[key]["key_facts"] = portfolio_key_facts({**out[key], "window": out["window"]}, service.bundle.universe, out[g]["findings"])
             out["profile"] = service.profiles[pid]          # faits officiels du persona, à citer tels quels
             return out
 
@@ -220,6 +332,7 @@ def build_tools(service: GuardianService, ctx: SessionContext, tracer: Tracer) -
             pid = _profile(service, ctx, profile_id)
             label, w = _portfolio(ctx, portfolio)
             out = service.check_esg(w, pid).to_dict()
+            out["key_facts"] = esg_key_facts(out)
             out["portfolio"] = label
             out["profile"] = service.profiles[pid]
             return out

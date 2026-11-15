@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from guardian.esg.engine import (category_label, COMPLEMENTARY, DOCUMENTED, INSUFFICIENT, NONE_FOUND, NOT_APPLICABLE, PROFILE_NOT_CONCERNED, STATE_LABELS, EsgReport)
+from guardian.esg.engine import (DATA_NATURE_NOTICE, TEMPORAL_NOTICE, category_label, COMPLEMENTARY, DOCUMENTED, INSUFFICIENT, NONE_FOUND, NOT_APPLICABLE, PROFILE_NOT_CONCERNED, STATE_LABELS, EsgReport)
 from guardian.esg.references import build_reference
 from guardian.explain.format import fr_date, pct, pct_value
 
@@ -116,7 +116,8 @@ def build_esg_view(report: EsgReport, universe) -> dict:
         "complementary": [c for c in cards if c["kind"] == "complementary"],
         "categories": [{"id": c["id"], "label": c["label"], "decision": c["decision"], "dimension": c["dimension"], "relevance": c["relevance"],
                         "weight": c["weight"], "tickers": list(c["tickers"])} for c in report.categories], "distinctions": DISTINCTIONS, "line_vs_underlying": line_vs_underlying,
-        "how_to_verify": HOW_TO_VERIFY, "no_score_notice": "Aucun score ESG n'est calculé, et le risque financier et l'ESG ne sont jamais combinés en une note unique.",
+        "how_to_verify": HOW_TO_VERIFY, "data_nature": DATA_NATURE_NOTICE.format(date=max([x["consulted_on"] for x in report.sources], default="date inconnue")) + " " + TEMPORAL_NOTICE,
+        "no_score_notice": "Aucun score ESG n'est calculé, et le risque financier et l'ESG ne sont jamais combinés en une note unique.",
         "sources": report.sources, "uncertainties": report.uncertainties, "rules_applied": report.rules_applied, "data_version": report.data_version,
     }
 

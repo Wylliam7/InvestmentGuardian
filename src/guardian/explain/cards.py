@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from guardian.explain.funds import fund_exposure
+from guardian.explain.funds import EFFECTIVE_N_NOTE, fund_exposure, fund_share
 from guardian.explain.format import asset_label, fr, fr_date, horizon_text, pct, pct_value
 from guardian.rules.engine import ATTENTION, CONFLIT, INFO, OK, GuardianReport
 
@@ -36,6 +36,11 @@ class Card:
     limits: tuple
     advanced: dict = field(default_factory=dict)   # jargon et détails techniques (repliés dans l'interface)
     note: str | None = None     # précision pédagogique (FNB) : ne change ni la mesure, ni le repère, ni le statut
+
+
+TECH_LIMIT = ("Cette part technologique est une mesure PARTIELLE : actions dont l'étiquette sectorielle est technologique ou communication, plus QQQ. "
+              "L'exposition technologique des autres FNB (par exemple un fonds large sur le marché américain) n'est pas mesurée. Le prototype ne peut donc "
+              "pas conclure si la préférence « ne pas miser exclusivement sur les technologies » est respectée.")
 
 
 def diversification_sentence(result) -> str:
@@ -74,6 +79,8 @@ def build_cards(result, report: GuardianReport, profile: dict, universe, rules_c
     top_label = asset_label(universe, top)
     cards: list[Card] = []
     fx = fund_exposure(result.weights, universe, top, result.concentration.max_weight)
+    top_is_fund = bool(fx["has_funds"] and fx["largest_position_is_fund"])
+    funds_dominate = fund_share(result.weights, universe) >= 0.5
 
     def level(status):
         return LEVELS[status]
@@ -97,8 +104,10 @@ def build_cards(result, report: GuardianReport, profile: dict, universe, rules_c
     cards.append(Card(
         "R1", fd.status, k, lab,
         headline=("Aucune position ne domine votre portefeuille." if fd.status == OK
-                  else f"Votre portefeuille dépend beaucoup de {top_label}." if fd.status == CONFLIT
-                  else f"Une position pèse lourd dans votre portefeuille : {top_label}."),
+                  else (f"Une ligne pèse beaucoup dans votre portefeuille : {top_label}, un FNB qui détient plusieurs titres." if top_is_fund
+                        else f"Votre portefeuille dépend beaucoup de {top_label}.") if fd.status == CONFLIT
+                  else (f"Une ligne pèse lourd dans votre portefeuille : {top_label}, un FNB qui détient plusieurs titres." if top_is_fund
+                        else f"Une position pèse lourd dans votre portefeuille : {top_label}.")),
         measure=f"{top_label} représente {pct_value(wpct)} de votre argent fictif.",
         why=(ok_why() if fd.status == OK else
              f"{short} : une forte part dans une seule position peut augmenter l'effet d'une mauvaise période de cette position sur l'ensemble "
@@ -183,17 +192,23 @@ def build_cards(result, report: GuardianReport, profile: dict, universe, rules_c
     cards.append(Card(
         "R7", fd.status, k, lab,
         headline=("Votre argent est réparti entre plusieurs positions." if fd.status == OK
-                  else "Votre argent est réparti entre peu de positions." if fd.status == CONFLIT
-                  else "Votre argent pourrait être réparti plus largement."),
+                  else ("Votre argent est réparti entre peu de lignes (certaines sont des FNB qui détiennent plusieurs titres)." if funds_dominate
+                        else "Votre argent est réparti entre peu de positions.") if fd.status == CONFLIT
+                  else ("Votre argent pourrait être réparti sur davantage de lignes (le nombre de lignes n'est pas le nombre d'entreprises)." if funds_dominate
+                        else "Votre argent pourrait être réparti plus largement.")),
         measure=diversification_sentence(result),
         why=(ok_why() if fd.status == OK else
-             f"{short} : quand l'argent est réparti entre peu de positions, le résultat dépend d'un petit nombre d'investissements."
-             f"{_preference_note(profile, 'diversification')}"),
+             f"{short} : quand l'argent est réparti entre peu de lignes, le résultat dépend d'un petit nombre d'investissements."
+             + (" Ici, une grande part du portefeuille est détenue via des FNB larges : la concentration mesurée porte sur les lignes, "
+                "pas sur les entreprises sous-jacentes, que nous ne mesurons pas. Cela ne signifie pas que le portefeuille est économiquement non diversifié."
+                if funds_dominate else "")
+             + f"{_preference_note(profile, 'diversification')}"),
         precision=(f"Notre outil considère qu'une diversification équivalente à moins de {fr(fd.threshold_conflict, 0)} positions de poids égal mérite une vigilance "
                    f"importante pour {name}, et moins de {fr(fd.threshold_attention, 0)} un point de vigilance. {CALC_DISCLAIMER}"),
         how="On calcule 1 divisé par la somme des carrés des parts de chaque position (indice HHI). Quatre positions égales donnent 4.",
         note=fx["pedagogical_note"] if fx["has_funds"] else None,
         limits=("Cette mesure compte des positions, pas leurs liens : deux actions très corrélées comptent pour deux.",
+                EFFECTIVE_N_NOTE,
                 "Elle ne tient pas compte de la diversification interne des fonds (FNB) et n'est pas le nombre d'entreprises sous-jacentes."),
         advanced=adv(fd)))
 
@@ -205,10 +220,11 @@ def build_cards(result, report: GuardianReport, profile: dict, universe, rules_c
         headline="Ce qu'il faut savoir sur cette analyse.",
         measure=_info_measure(fd, name, universe),
         why=("Cette information n'est pas un contrôle : aucun repère n'est appliqué."
-             + (f" {name} souhaite éviter une concentration exclusivement technologique ; nous affichons la part technologique à titre informatif."
+             + (f" {name} souhaite éviter une concentration exclusivement technologique ; nous affichons la part technologique à titre informatif "
+                "(mesure partielle : voir les limites)."
                 if fd.evidence.get("tech_share_pct") is not None else "")),
         precision="Aucun repère n'est appliqué à cette information.",
         how="Fenêtre d'analyse, nombre de dates communes et, lorsque le profil le mentionne, part des positions étiquetées technologie.",
-        limits=tuple(fd.limitations),
+        limits=tuple(fd.limitations) + (TECH_LIMIT,) if fd.evidence.get("tech_share_pct") is not None else tuple(fd.limitations),
         advanced=adv(fd)))
     return cards

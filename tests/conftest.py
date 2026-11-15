@@ -142,12 +142,15 @@ def v2_expected_metrics(service, weights_frac):
             "Répartition de mon portefeuille": f"≈ {r.concentration.effective_n:.1f}".replace(".", ",") + " positions"}
 
 
-def expected_evaluate(service, weights):
+def expected_evaluate(service, weights, profile_id="robert"):
     """Sortie attendue de l'outil evaluate_portfolio : moteur V1 inchangé + contexte FNB (V3.1)."""
     from guardian.explain.funds import fund_exposure
+    from guardian.agent.tools import portfolio_key_facts
     res = service.analyze(weights)
-    return {**res.to_tool_dict(), "fund_exposure": fund_exposure(res.weights, service.bundle.universe, res.concentration.max_ticker, res.concentration.max_weight),
-            "portfolio": "A"}
+    out = {**res.to_tool_dict(), "fund_exposure": fund_exposure(res.weights, service.bundle.universe, res.concentration.max_ticker, res.concentration.max_weight)}
+    from guardian.agent.tools import active_profile_facts
+    kf = {**portfolio_key_facts(out, service.bundle.universe), "profil_actif": active_profile_facts(service, profile_id)}
+    return {**out, "key_facts": kf, "portfolio": "A"}
 
 
 def expected_compare(service, a, b, profile_id):
@@ -155,7 +158,9 @@ def expected_compare(service, a, b, profile_id):
     from guardian.explain.funds import fund_exposure
     c = service.compare(a, b, profile_id)
     out = c.to_tool_dict()
-    for key, r in (("portfolio_A", c.a), ("portfolio_B", c.b)):
+    from guardian.agent.tools import portfolio_key_facts
+    for key, r, g in (("portfolio_A", c.a, "guardian_A"), ("portfolio_B", c.b, "guardian_B")):
         out[key]["fund_exposure"] = fund_exposure(r.weights, service.bundle.universe, r.concentration.max_ticker, r.concentration.max_weight)
+        out[key]["key_facts"] = portfolio_key_facts({**out[key], "window": out["window"]}, service.bundle.universe, out[g]["findings"])
     out["profile"] = service.profiles[profile_id]
     return out

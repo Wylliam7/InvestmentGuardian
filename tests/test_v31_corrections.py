@@ -187,7 +187,7 @@ def test_fund_exposure_is_added_to_tool_outputs_without_changing_engine_values(r
     for out in (ev, ck, cmp_["portfolio_A"], cmp_["portfolio_B"]):
         assert out["fund_exposure"]["underlying_diversification_measured"] is False and "pedagogical_note" in out["fund_exposure"]
     base = real_service.analyze(MATEO_A).to_tool_dict()
-    assert {k: v for k, v in ev.items() if k not in ("fund_exposure", "portfolio")} == base                 # métriques, HHI, poids : identiques
+    assert {k: v for k, v in ev.items() if k not in ("fund_exposure", "key_facts", "portfolio")} == base                 # métriques, HHI, poids : identiques
     assert ev["fund_exposure"]["largest_position_is_fund"] is True and ev["concentration"] == base["concentration"]
     assert ck["findings"] == real_service.check(MATEO_A, "mateo")[1].to_dict()["findings"]                 # statuts et seuils : identiques
 

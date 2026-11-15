@@ -136,6 +136,12 @@ general_limitations:
   - "Pas de frais, d'impôts ni d'écarts achat-vente ; rendements avec réinvestissement des dividendes (adj_close)."
   - "Calendrier commun TSX et marchés américains : les mouvements des cryptos les jours où les actions ne se négocient pas ne sont pas observés individuellement."
   - "Les seuils du Guardian Check sont des heuristiques de démonstration, modifiables ; ce ne sont pas des normes."
+  - "Rééquilibrage mensuel vers les poids cibles, sans coûts de transaction : un investisseur réel ne rééquilibrerait pas forcément ainsi."
+  - "Les actifs cotés en USD sont convertis en CAD au dernier taux USD/CAD publié (Banque du Canada) : une partie des résultats vient du taux de change."
+  - "Une volatilité annualisée et une plus forte baisse historique décrivent une seule trajectoire passée ; elles ne bornent pas les pertes futures."
+  - "Obligations : les FNB d'obligations sont sensibles aux variations de taux d'intérêt (en 2022, actions et obligations ont reculé en même temps) ; cette sensibilité n'est pas modélisée séparément."
+  - "FNB : leur composition et leurs concentrations internes (par exemple sectorielles) ne sont pas mesurées ; le nombre effectif de positions porte sur les lignes, pas sur les entreprises sous-jacentes."
+  - "Les informations ESG sont un état daté (consultation du 2026-11-14), pas une recherche en temps réel ; elles ne sont pas supposées connues aux dates de la simulation historique."
 
 missing_information:
   - "Part de ce portefeuille dans le patrimoine total de l'investisseur."

@@ -6,6 +6,7 @@ import datetime as dt
 import streamlit as st
 
 from guardian.explain.cards import Card
+from guardian.agent.fallback import verified_facts
 from guardian.explain.esg_view import build_references_from_tool_result
 from guardian.explain.format import fr, fr_date, pct, pct_value
 from guardian.explain.summary import PrioritySummary
@@ -101,19 +102,22 @@ def render_how_answered(t, profiles: dict, active_profile: str) -> None:
         st.caption(d)
 
 
-def render_facts_used(t) -> None:
-    """Faits historiques repris des résultats d'outils (valeurs du moteur, jamais du texte du modèle)."""
-    ev = next((r for r in sorted(t.tool_records, key=lambda r: r.id) if r.tool == "evaluate_portfolio" and r.status == "ok"), None)
-    if ev is None:
+VERIFIED_TITLE = "Faits et contrôles vérifiés (repris des outils exécutés pendant cette requête, pas du texte de l'IA)"
+
+
+def render_verified_facts(t) -> None:
+    """Section compacte construite uniquement à partir des résultats d'outils de la requête (aucun statut déduit)."""
+    secs = verified_facts(t.tool_records, t.question)
+    if not secs:
         return
-    m, c, w = ev.result["metrics"], ev.result["concentration"], ev.result["window"]
-    st.markdown("**Faits historiques utilisés (valeurs calculées par le moteur)**")
-    st.markdown(f"- Période : du {w['start']} au {w['end']} · devise : dollar canadien (CAD)\n"
-                f"- Rendement historique cumulé : {fr(m['cumulative_return_pct'])} %\n"
-                f"- Fluctuations annualisées : {fr(m['annualized_volatility_pct'])} %\n"
-                f"- Plus forte baisse historique : {fr(m['max_drawdown_pct'])} %\n"
-                f"- Plus grande position : {c['largest_position']} ({pct_value(c['largest_position_weight_pct'])}) · "
-                f"environ {fr(c['effective_number_of_positions'])} positions de poids égal")
+    with st.expander(VERIFIED_TITLE, expanded=True):
+        for title, lines in secs:
+            st.markdown(f"**{title}**\n" + "\n".join(f"- {x}" for x in lines))
+
+
+def render_facts_used(t) -> None:
+    """Compatibilité V2 : la section vérifiée remplace l'ancien bloc « Faits historiques utilisés »."""
+    render_verified_facts(t)
 
 
 # ----------------------------------------------------------------------------- requêtes de l'assistant
@@ -139,17 +143,28 @@ def render_request(t, service, select_profile_cb, active_profile: str, show_fact
         st.info("Le moteur financier reste disponible : tous les résultats de l'application sont calculés sans l'assistant IA.")
     elif t.withheld:
         st.warning(f"**Analyse incomplète.** {t.withheld_reason}")
+        if t.fallback:
+            with st.container(border=True):
+                st.markdown(t.fallback)
+            esg_rec = next((r for r in t.tool_records if r.tool == "check_esg_preferences" and r.status == "ok"), None)
+            if esg_rec is not None:
+                render_esg_references(build_references_from_tool_result(esg_rec.result))
+            with st.expander("Affirmations non confirmées par les outils (contrôle automatique)"):
+                for v in (t.claims or {}).get("violations", []):
+                    st.markdown(f"- **{v['category']}** : {v['message']}")
+                    st.caption(f"Extrait : {v['excerpt']}")
         st.info("Les indicateurs et le Guardian Check des autres onglets restent valides : ils proviennent du moteur Python.")
     else:
         if t.caveat:
             st.warning(t.caveat)
-        st.markdown("**Réponse de l'assistant IA** — une interprétation générée par Nova 2 Lite. Les chiffres viennent des outils financiers (voir plus bas) :")
+        st.markdown("**Réponse de l'assistant IA** — une interprétation générée par Nova 2 Lite. En cas de doute, les faits et statuts vérifiés plus bas font foi :")
         st.markdown(t.text)
+        if t.claims:
+            st.caption(t.claims["summary"])
         esg_rec = next((r for r in t.tool_records if r.tool == "check_esg_preferences" and r.status == "ok"), None)
         if esg_rec is not None:
             render_esg_references(build_references_from_tool_result(esg_rec.result))
-        if show_facts:
-            render_facts_used(t)
+        render_verified_facts(t)                     # pour toute réponse affichée (bouton « Explique-moi » et assistant)
     render_how_answered(t, service.profiles, active_profile)
     with st.expander("Voir les détails techniques de l'analyse"):
         render_tools_technical(t)
@@ -250,6 +265,7 @@ def render_esg_section(view: dict) -> None:
         for h in view["how_to_verify"]:
             st.markdown(f"- {h}")
     st.caption(view["no_score_notice"])
+    st.caption(view["data_nature"])
     with st.expander("Détails techniques ESG (sources, dates, règles appliquées)"):
         st.markdown(f"Version des données ESG : `{view['data_version']}`")
         for s in view["sources"]:

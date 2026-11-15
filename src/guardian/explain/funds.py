@@ -10,11 +10,13 @@ from guardian.explain.format import pct_value
 FUND_CLASSES = ("etf_equity", "etf_bond")     # fonds de plusieurs titres ; GLD (or) et cryptoactifs sont traités ailleurs
 
 NOT_MEASURED = "La diversification sous-jacente des FNB n'est pas mesurée ici."
+EFFECTIVE_N_NOTE = ("Le nombre effectif de positions mesure la concentration des poids entre les lignes du portefeuille, "
+                    "pas le nombre d'entreprises sous-jacentes.")
 GENERIC_NOTE = ("Une position de {w} dans un FNB diversifié n'est pas équivalente à une position de {w} dans une entreprise individuelle : "
                 "un FNB détient plusieurs entreprises ou titres. " + NOT_MEASURED + " Le repère s'applique pourtant de la même façon à une action et à un FNB, "
                 "ce qui peut surestimer la concentration réelle. Certains FNB sont eux-mêmes concentrés (par exemple sur un secteur) : la composition "
-                "sous-jacente reste à vérifier auprès de l'émetteur.")
-SHORT_NOTE = ("Un FNB détient plusieurs titres : sa part n'est pas équivalente à celle d'une entreprise individuelle. " + NOT_MEASURED)
+                "sous-jacente reste à vérifier auprès de l'émetteur. " + EFFECTIVE_N_NOTE)
+SHORT_NOTE = ("Un FNB détient plusieurs titres : sa part n'est pas équivalente à celle d'une entreprise individuelle. " + NOT_MEASURED + " " + EFFECTIVE_N_NOTE)
 
 
 def fund_exposure(weights: dict, universe, max_ticker: str, max_weight: float) -> dict:
@@ -36,3 +38,8 @@ def fund_exposure(weights: dict, universe, max_ticker: str, max_weight: float) -
                             "Aucun FNB dans ce portefeuille : chaque position est une action individuelle ou un actif unique.",
     }
     return out
+
+
+def fund_share(weights: dict, universe) -> float:
+    """Part (fraction) du portefeuille détenue via des FNB d'actions ou d'obligations (métadonnée réelle `asset_class`)."""
+    return sum(w for t, w in weights.items() if str(universe.loc[t, "asset_class"]) in FUND_CLASSES)

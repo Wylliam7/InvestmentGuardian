@@ -29,7 +29,7 @@ from guardian.agent.tools import SessionContext  # noqa: E402
 from guardian.agent.tracer import Tracer  # noqa: E402
 from guardian.data.loader import DataError  # noqa: E402
 from guardian.explain.cards import LEVELS, PLAIN_TITLES, build_cards, diversification_sentence  # noqa: E402
-from guardian.explain.compare_plain import COMPARE_FOOTER, plain_tradeoffs  # noqa: E402
+from guardian.explain.compare_plain import COMPARE_FOOTER, COMPARE_SENSITIVITY_NOTE, plain_tradeoffs  # noqa: E402
 from guardian.explain.esg_view import build_esg_view  # noqa: E402
 from guardian.explain.funds import fund_exposure  # noqa: E402
 from guardian.explain.format import fr, fr_date, horizon_text, persona_sentence, pct, pct_value  # noqa: E402
@@ -484,6 +484,7 @@ with tab_cmp:
             st.markdown(f"- Pour {profile['display_name']}, nos critères signalent **{ca[CONFLIT]} risque(s) important(s) et {ca[ATTENTION]} point(s) de vigilance pour A**, "
                         f"contre **{cb[CONFLIT]} et {cb[ATTENTION]} pour B**.")
             st.caption(COMPARE_FOOTER)
+            st.caption(COMPARE_SENSITIVITY_NOTE)
             c1, c2 = st.columns(2)
             c1.plotly_chart(comparison_performance_figure(a, b, "A", "B"), width="stretch")
             c2.plotly_chart(comparison_drawdown_figure(a, b, "A", "B"), width="stretch")

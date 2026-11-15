@@ -13,6 +13,17 @@ from guardian.agent.agent import GuardianAgent
 from guardian.agent.tools import SessionContext
 from guardian.agent.tracer import Tracer
 
+def _validated(tr) -> str:
+    """V3.3 : une réponse réelle est acceptable si elle est affichée SANS violation, ou retenue par le contrôle des affirmations avec un repli
+    déterministe. Retourne le texte effectivement présenté à l'utilisateur (réponse du modèle ou repli)."""
+    if tr.withheld:
+        assert tr.text is None and tr.fallback and tr.claims and not tr.claims["ok"], tr.withheld_reason   # retenue UNIQUEMENT par le contrôle V3.3
+        print("RETENUE PAR LE CONTRÔLE V3.3 :", tr.claims["violations"])
+        return tr.fallback
+    assert tr.text and (tr.claims is None or tr.claims["ok"])
+    return tr.text
+
+
 pytestmark = [pytest.mark.live, pytest.mark.skipif(os.environ.get("RUN_LIVE") != "1", reason="RUN_LIVE=1 requis")]
 WEIGHTS = {"NVDA": .40, "XBB.TO": .35, "XIU.TO": .25}
 TRACES = Path(__file__).resolve().parents[1] / "traces"
@@ -28,7 +39,7 @@ def test_live_agent_calls_real_financial_tool(real_service):
     tr = ag.ask(QUESTION)
     print("\nOUTILS :", [(r.tool, r.status, r.duration_ms) for r in tr.tool_records])
     print("USAGE :", tr.usage, "cycles :", tr.cycles, "durée :", tr.duration_s)
-    print("TEXTE :", tr.text)
+    print("TEXTE :", tr.text, "| RETENUE :", tr.withheld, tr.withheld_reason, "| VIOLATIONS :", (tr.claims or {}).get("violations"))
     TRACES.mkdir(exist_ok=True)
     (TRACES / "live_robert_nvda40.json").write_text(json.dumps(
         {"question": QUESTION, "model_id": tr.model_id, "region": tr.region, "started_at": tr.started_at,
@@ -40,7 +51,7 @@ def test_live_agent_calls_real_financial_tool(real_service):
     ev = [r for r in tr.tool_records if r.tool == "evaluate_portfolio"]
     if ev:
         assert ev[0].result == expected_evaluate(real_service, WEIGHTS)
-    assert not tr.withheld and tr.text
+    _validated(tr)
 
 
 def test_live_tool_failure_does_not_surface_improvised_numbers(real_service):
@@ -63,7 +74,7 @@ def test_live_two_consecutive_requests_each_validated_by_its_own_tools(real_serv
         print("\nREQUÊTE", t.turn, "| outils :", [(r.tool, r.status) for r in t.tool_records],
               "| cycles :", t.cycles, "| retenue :", t.withheld, "|", t.withheld_reason)
     assert t1.error is None and t2.error is None
-    assert not t1.withheld and not t2.withheld
+    _validated(t1), _validated(t2)
     assert len(t1.tool_records) >= 1 and len(t2.tool_records) >= 1       # la requête 2 appelle ses propres outils
     assert {r.turn for r in t1.tool_records} == {1} and {r.turn for r in t2.tool_records} == {2}
 
@@ -83,13 +94,16 @@ def test_live_v1_compare_nvda40_with_diversified_portfolio_for_robert(real_servi
     tr = ag.ask(q)
     print("\nOUTILS :", [(r.tool, r.status, r.arguments) for r in tr.tool_records], "| cycles :", tr.cycles, "| usage :", tr.usage)
     print("RETENUE :", tr.withheld, tr.withheld_reason, "\nTEXTE :\n", tr.text)
+    if tr.claims and tr.claims["violations"]:
+        print("VIOLATIONS :", tr.claims["violations"])
     TRACES.mkdir(exist_ok=True)
     (TRACES / "live_v1_compare.json").write_text(json.dumps(
         {"question": q, "model_id": tr.model_id, "region": tr.region, "started_at": tr.started_at, "context": tr.context,
          "answer": tr.text, "withheld": tr.withheld, "usage": tr.usage, "tool_records": ag.tracer.export()}, ensure_ascii=False, indent=2))
     assert tr.error is None, tr.error
     assert "compare_scenarios" in {r.tool for r in tr.tool_records}
-    assert all(r.status == "ok" for r in tr.tool_records) and not tr.withheld and tr.text
+    assert all(r.status == "ok" for r in tr.tool_records)
+    _validated(tr)
     cmp_rec = next(r for r in tr.tool_records if r.tool == "compare_scenarios")
     assert cmp_rec.result == expected_compare(real_service, a, b, "robert")   # trace = moteur déterministe
 
@@ -102,7 +116,8 @@ def test_live_v1_same_portfolio_evaluated_for_both_named_profiles(real_service):
     print("\nOUTILS :", [(r.tool, r.status, r.arguments) for r in tr.tool_records], "| cycles :", tr.cycles, "| usage :", tr.usage)
     print("RETENUE :", tr.withheld, tr.withheld_reason, "\nTEXTE :\n", tr.text)
     assert tr.error is None and tr.clarification is None, (tr.error, tr.clarification)
-    assert tr.tool_records and all(r.status == "ok" for r in tr.tool_records) and not tr.withheld
+    assert tr.tool_records and all(r.status == "ok" for r in tr.tool_records)
+    _validated(tr)
     profs = {(r.arguments.get("profile_id") or "robert").lower() for r in tr.tool_records if r.tool in ("get_profile", "check_profile_constraints")}
     assert profs == {"robert", "amira"}, profs
 
@@ -125,7 +140,12 @@ def test_live_ui_trace_shows_a_real_successful_compare_scenarios_call():
     assert cmp_ok, "compare_scenarios n'a pas été appelé avec succès : " + str([(r.tool, r.status) for r in recs])
     assert any("compare_scenarios : appelé avec succès" in s.value and f"appel n° {cmp_ok[0].id}" in s.value for s in at.success)
     assert any(f"#{cmp_ok[0].id} · requête 1 · compare_scenarios" in e.label for e in at.expander)
-    assert not any("Analyse incomplète" in w.value for w in at.warning)
+    tr = at.session_state.history[-1]
+    if tr.withheld:
+        _validated(tr)                                   # retenue par le contrôle V3.3 : repli affiché
+        assert any("Faits vérifiés, issus directement des calculs Python" in m.value for m in at.markdown)
+    else:
+        assert not any("Analyse incomplète" in w.value for w in at.warning)
 
 
 # ----------------------------------------------------------------------------- V2 : bouton « Explique-moi mes risques avec l'IA »
@@ -156,20 +176,22 @@ def _report_live(at, name):
 def test_live_v2_explain_my_risks_for_robert():
     at = _live_explain("robert")
     tr = _report_live(at, "robert")
-    assert tr.error is None and tr.kind == "explain_risks" and not tr.withheld and tr.text
+    assert tr.error is None and tr.kind == "explain_risks"
+    _validated(tr)
     tools = {r.tool: r for r in tr.tool_records if r.status == "ok"}
     assert "evaluate_portfolio" in tools and "check_profile_constraints" in tools
     assert tr.context["profile_id"] == "robert" and tr.context["weights_a_pct"] == {"NVDA": 40.0, "XBB.TO": 35.0, "XIU.TO": 25.0}
     assert all(r.turn == 1 for r in tr.tool_records)
     md = " ".join(m.value for m in at.markdown)
     assert "A analysé votre portefeuille A" in md and "A comparé les risques du portefeuille A avec le profil de Robert" in md
-    assert "Faits historiques utilisés (valeurs calculées par le moteur)" in md
+    assert ("Faits vérifiés, issus directement des calculs Python" in md) if tr.withheld else ("Faits historiques utilisés (valeurs calculées par le moteur)" in md)
 
 
 def test_live_v2_explain_my_risks_for_amira_same_portfolio():
     at = _live_explain("amira")
     tr = _report_live(at, "amira")
-    assert tr.error is None and not tr.withheld and tr.text
+    assert tr.error is None
+    txt = _validated(tr)
     assert tr.context["profile_id"] == "amira" and tr.context["weights_a_pct"] == {"NVDA": 40.0, "XBB.TO": 35.0, "XIU.TO": 25.0}
     chk = next(r for r in tr.tool_records if r.tool == "check_profile_constraints" and r.status == "ok")
     assert chk.result["profile_id"] == "amira"
@@ -198,12 +220,13 @@ def test_live_v3_mateo_esg_question_with_insufficient_data(real_service):
     (TRACES / "live_v3_mateo_esg_insuffisant.json").write_text(json.dumps(
         {"question": tr.question, "model_id": tr.model_id, "region": tr.region, "started_at": tr.started_at, "context": tr.context,
          "answer": tr.text, "withheld": tr.withheld, "usage": tr.usage, "tool_records": ag.tracer.export()}, ensure_ascii=False, indent=2))
-    assert tr.error is None and tr.clarification is None and not tr.withheld and tr.text, (tr.error, tr.withheld_reason)
+    assert tr.error is None and tr.clarification is None, tr.error
+    txt = _validated(tr)
     esg = [r for r in tr.tool_records if r.tool == "check_esg_preferences"]
     assert esg and esg[0].status == "ok" and esg[0].result["overall_state"] == "INSUFFICIENT" and all(r.turn == 1 for r in tr.tool_records)
     import re
-    assert not re.search(ESG_FALSE_CLAIMS, tr.text, re.I), tr.text
-    assert re.search(r"insuffisan|ne peux pas confirmer|ne permettent pas|non évalu|impossible de confirmer", tr.text, re.I), tr.text
+    assert not re.search(ESG_FALSE_CLAIMS, txt, re.I), txt
+    assert re.search(r"insuffisan|ne peux pas confirmer|ne permettent pas|non évalu|impossible de confirmer", txt, re.I), txt
 
 
 def test_live_v3_mateo_esg_question_with_documented_information(real_service):
@@ -211,15 +234,16 @@ def test_live_v3_mateo_esg_question_with_documented_information(real_service):
     ag = _mateo_agent(real_service, b)
     tr = ag.ask("Ce portefeuille contient-il des entreprises liées à des controverses documentées pour Mateo ?")
     _show(tr)
-    assert tr.error is None and not tr.withheld and tr.text
+    assert tr.error is None
+    txt = _validated(tr)
     esg = next(r for r in tr.tool_records if r.tool == "check_esg_preferences" and r.status == "ok")
     assert esg.result["overall_state"] == "DOCUMENTED"
     import re
-    assert re.search(r"Canadian Natural|CNQ", tr.text) and re.search(r"Toronto|TD", tr.text)
-    assert not re.search(ESG_FALSE_CLAIMS, tr.text, re.I) and not re.search(r"\bcoupable|\bcorrompu|a été condamn", tr.text, re.I), tr.text
+    assert re.search(r"Canadian Natural|CNQ", txt) and re.search(r"Toronto|TD", txt)
+    assert not re.search(ESG_FALSE_CLAIMS, txt, re.I) and not re.search(r"\bcoupable|\bcorrompu|a été condamn", txt, re.I), txt
     # V3.1 : CNQ (exclusion environnementale) et TD (observation de gouvernance) ne sont pas fusionnés en un conflit unique
-    assert re.search(r"exclu|exclusion", tr.text, re.I) and re.search(r"observation", tr.text, re.I) and re.search(r"gouvernance", tr.text, re.I), tr.text
-    assert not re.search(r"30\s*%[^.\n]{0,60}(conflit|préférences? ESG)", tr.text, re.I), tr.text
+    assert re.search(r"exclu|exclusion", txt, re.I) and re.search(r"observation", txt, re.I) and re.search(r"gouvernance", txt, re.I), txt
+    assert not re.search(r"30\s*%[^.\n]{0,60}(conflit|préférences? ESG)", txt, re.I), txt
     assert esg.result["documented_categories"][0]["tickers"] == ["CNQ.TO"] and esg.result["complementary_information"][0]["tickers"] == ["TD.TO"]
 
 
@@ -236,8 +260,45 @@ def test_live_v3_explain_my_risks_for_mateo_with_separate_esg_section():
     (TRACES / "live_v3_explain_mateo.json").write_text(json.dumps(
         {"question": tr.question, "kind": tr.kind, "context": tr.context, "answer": tr.text, "withheld": tr.withheld, "usage": tr.usage,
          "tool_records": at.session_state.agent.tracer.export()}, ensure_ascii=False, indent=2))
-    assert tr.error is None and not tr.withheld and tr.text, tr.withheld_reason
+    assert tr.error is None
+    txt = _validated(tr)
     ok = {r.tool for r in tr.tool_records if r.status == "ok"}
     assert {"evaluate_portfolio", "check_profile_constraints", "check_esg_preferences"} <= ok
     import re
-    assert not re.search(ESG_FALSE_CLAIMS, tr.text, re.I), tr.text
+    assert not re.search(ESG_FALSE_CLAIMS, txt, re.I), txt
+
+
+# ============================================================ V3.3 : contrôle des affirmations sur des réponses réelles
+def _check_v33(tr, label):
+    """Une réponse réelle est soit affichée SANS violation, soit retenue avec le repli déterministe : jamais un texte fautif présenté comme fiable."""
+    _show(tr)
+    print("REPLI :", tr.fallback)
+    print("CONTRÔLE :", None if tr.claims is None else {k: tr.claims[k] for k in ("ok", "violations", "anchored_numbers", "free_numbers")})
+    TRACES.mkdir(exist_ok=True)
+    (TRACES / f"live_v33_{label}.json").write_text(json.dumps(
+        {"question": tr.question, "answer": tr.text, "withheld": tr.withheld, "reason": tr.withheld_reason, "claims": tr.claims, "fallback": tr.fallback,
+         "usage": tr.usage}, ensure_ascii=False, indent=2))
+    assert tr.error is None and tr.clarification is None, tr.error
+    if tr.withheld:
+        assert tr.text is None and tr.fallback and tr.claims and not tr.claims["ok"], tr.withheld_reason
+    else:
+        assert tr.text and tr.claims and tr.claims["ok"]
+
+
+def test_live_v33_mateo_esg_portfolio_b(real_service):
+    ag = _mateo_agent(real_service, _preset_fractions("mateo_actions_canadiennes"))
+    _check_v33(ag.ask("Ce portefeuille contient-il des entreprises liées à des controverses documentées pour Mateo ?"), "mateo_b")
+
+
+def test_live_v33_robert_nvidia_concentration(real_service):
+    ag = GuardianAgent(real_service, SessionContext(_preset_fractions("robert_nvda_40"), "robert"), Tracer())
+    tr = ag.ask("Robert est tenté d'acheter davantage de Nvidia : que penser de ce portefeuille pour lui ?")
+    _check_v33(tr, "robert_nvda")
+    if not tr.withheld:
+        import re
+        assert not re.search(r"\b(achetez|vendez)\b", tr.text, re.I)
+
+
+def test_live_v33_amira_technology_preference(real_service):
+    ag = GuardianAgent(real_service, SessionContext(_preset_fractions("amira_tech_crypto"), "amira"), Tracer())
+    _check_v33(ag.ask("Ce portefeuille respecte-t-il la préférence d'Amira de ne pas miser exclusivement sur les technologies ?"), "amira_tech")

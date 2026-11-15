@@ -29,6 +29,10 @@ NOT_APPLICABLE_PROFILE = "NOT_APPLICABLE_PROFILE"
 PROFILE_NOT_CONCERNED = "Ce profil n'a pas déclaré de préférences ESG : aucune vérification ESG n'est appliquée."
 NO_SCORE_NOTICE = ("Aucun score ESG n'est calculé et aucun score global ne combine risque financier et ESG. "
                    "Un portefeuille peut avoir peu d'alertes financières tout en ayant une cohérence ESG inconnue.")
+DATA_NATURE_NOTICE = ("Ces informations ESG proviennent de données enregistrées dans le projet (consultées le {date}), pas d'une recherche Internet en temps réel : "
+                      "elles ne sont pas mises à jour à chaque analyse.")
+TEMPORAL_NOTICE = ("Elles décrivent un état à la date de consultation. Elles ne sont pas supposées connues aux dates de la simulation historique (2021-2026) "
+                   "et ne modifient aucun résultat financier historique.")
 ABSENCE_NOTICE = ("L'absence de résultat n'est pas une preuve d'absence de controverse : « aucune controverse identifiée » signifie seulement "
                   "« non trouvée dans les sources consultées », qui sont peu nombreuses.")
 
@@ -147,6 +151,8 @@ class EsgReport:
             "search_scope": self.search_scope(), "fund_verification": self.fund_verification(),
             "sources": list(self.sources), "uncertainties": list(self.uncertainties), "rules_applied": list(self.rules_applied),
             "wording": ABSENCE_NOTICE, "no_score_notice": NO_SCORE_NOTICE,
+            "data_nature": DATA_NATURE_NOTICE.format(date=max([x["consulted_on"] for x in self.sources], default="date inconnue")) + " " + TEMPORAL_NOTICE,
+            "no_threshold_notice": "Le module ESG n'applique aucun seuil et ne calcule aucun score : les « seuils heuristiques » appartiennent au Guardian Check financier.",
             "provenance": {"esg_data_version": self.data_version,
                            "esg_sources": [{"id": s["id"], "consulted_on": s["consulted_on"], "url": s["url"], "url_status": s["url_status"]} for s in self.sources]},
         }

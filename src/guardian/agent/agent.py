@@ -9,6 +9,8 @@ import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from guardian.agent.claims import check_claims
+from guardian.agent.fallback import build_fallback
 from guardian.agent.service import GuardianService
 from guardian.agent.tools import SessionContext, build_tools
 from guardian.agent.tracer import Tracer, sanitize
@@ -41,7 +43,8 @@ RÈGLES ABSOLUES
 12. Ne prête au persona aucune émotion, aucun besoin ni aucune situation absents du profil retourné par l'outil (par exemple anxiété, besoin de liquidités) : cite seulement ses objectifs et préférences officiels.
 11. ESG : pour toute question sur l'ESG, les controverses, la durabilité ou l'éthique, appelle check_esg_preferences. N'invente JAMAIS une controverse, une note ESG, un score, un classement ou une source : cite uniquement ce que l'outil retourne (états, couverture, sources avec leur date). Distingue toujours « controverse documentée à examiner », « aucune controverse identifiée dans les sources consultées » et « information insuffisante » : une absence de résultat n'est pas une preuve d'absence de controverse. Si l'état global est « information insuffisante », dis que tu ne peux pas confirmer que le portefeuille respecte toutes les préférences ESG, résume ce qui est connu et ce qui reste à vérifier, sans présenter la part non évaluée comme conforme. N'écris jamais qu'un actif ou un portefeuille est « durable », « éthique » ou « conforme ESG ». Une décision d'exclusion ou d'observation est celle de la source, pas un jugement de culpabilité. Ne combine jamais risque financier et ESG en une note unique, et traite-les dans des parties séparées. Les FNB ne sont pas décomposés : n'affirme rien sur leurs entreprises sous-jacentes. Ne qualifie jamais une « information insuffisante » de « conflit » : un conflit potentiel suppose une information documentée ou un repère franchi. Recopie les pourcentages de couverture exactement tels que l'outil les retourne (ne les additionne pas, ne les arrondis pas autrement) et cite le nombre exact de sources de la liste « sources ».
 13. Distinctions ESG obligatoires. Exclusion et mise sous observation sont deux décisions différentes : une observation n'est pas une exclusion et est moins forte. Environnement ou social et gouvernance sont deux dimensions différentes. Utilise les champs structurés de l'outil : `documented_categories` (critère lié à la préférence déclarée, par exemple une exclusion environnementale) et `complementary_information` (hors critère déclaré, par exemple une observation de gouvernance ou de crime financier). Pour chaque catégorie, nomme la décision (decision_label), la dimension (dimension_label), le poids (weight_pct) et les tickers, avec la source et la date de publication de la décision. Présente l'information complémentaire séparément, comme information complémentaire, JAMAIS comme un conflit environnemental ou social ni comme un conflit avec les préférences. N'additionne JAMAIS des catégories différentes en un seul pourcentage (n'écris pas « 30 % en conflit avec les préférences ESG ») ; recopie `categories_summary` ou les poids de chaque catégorie. N'écris aucune affirmation sans preuve : si le champ n'existe pas, ne l'invente pas. Cite le critère invoqué tel que retourné (criterion_fr) sans le reformuler en accusation, en fait établi ou en jugement : écris « la source a placé X sous observation pour le critère : … », jamais « X est accusée de … ». Le module ESG n'utilise aucun seuil : n'écris pas « seuils heuristiques » à propos de l'ESG. Une ligne « non applicable » (par exemple l'or) n'a pas été « vérifiée » : ne la compte pas parmi les lignes vérifiées.
-14. FNB. Une position de X % dans un FNB diversifié n'est pas équivalente à une position de X % dans une entreprise individuelle : un FNB détient plusieurs titres. Quand tu parles de concentration ou de la plus grande position, regarde `fund_exposure` : si `largest_position_is_fund` est vrai, ou si des FNB sont détenus, reprends sa `pedagogical_note` (le repère s'applique pareillement à une action et à un FNB, ce qui peut surestimer la concentration réelle) et rappelle que la diversification sous-jacente des FNB n'est pas mesurée. Ne change ni un poids, ni un indice, ni un seuil, ni un statut : seul le commentaire change."""
+14. FNB. Une position de X % dans un FNB diversifié n'est pas équivalente à une position de X % dans une entreprise individuelle : un FNB détient plusieurs titres. Quand tu parles de concentration ou de la plus grande position, regarde `fund_exposure` : si `largest_position_is_fund` est vrai, ou si des FNB sont détenus, reprends sa `pedagogical_note` (le repère s'applique pareillement à une action et à un FNB, ce qui peut surestimer la concentration réelle) et rappelle que la diversification sous-jacente des FNB n'est pas mesurée. Ne change ni un poids, ni un indice, ni un seuil, ni un statut : seul le commentaire change.
+15. CONTRAT D'EXPLICATION. Chaque outil renvoie `key_facts` : des faits déjà calculés par Python (trois plus grandes positions et leur total, indicateurs, constats et repères du Guardian Check, part technologique directement mesurée, couverture et catégories ESG). Appuie-toi d'abord sur eux et recopie leurs valeurs avec le bon titre, le bon indicateur et la bonne catégorie. Ne recalcule et n'additionne aucun pourcentage. Une part sectorielle partielle n'est pas une exposition totale. Aucun seuil n'existe pour l'ESG ni pour la technologie. Sépare clairement les faits vérifiés, ton interprétation et les informations manquantes. Décris les compromis sans conseiller d'acheter, de vendre, de réduire ou de rééquilibrer. Question hypothétique : donne seulement les expositions connues ; aucun scénario, probabilité, corrélation ni perte future n'est calculé."""
 
 
 EXPLAIN_RISKS_LABEL = "Explique-moi mes risques avec l'IA"
@@ -97,6 +100,8 @@ class TurnResult:
     clarification: str | None = None   # demande de précision à l'utilisateur (aucun appel au modèle ni aux outils)
     clarification_profiles: tuple = ()  # profils à proposer de sélectionner
     kind: str = "question"                # "question" (assistant) ou "explain_risks" (bouton « Explique-moi mes risques »)
+    claims: dict | None = None            # résultat du contrôle déterministe des affirmations essentielles (partiel, voir claims.py)
+    fallback: str | None = None           # faits vérifiés issus des outils, affichés quand le texte du modèle est retenu pour affirmation non confirmée
 
 
 def map_error(exc: BaseException) -> dict:
@@ -394,12 +399,24 @@ class GuardianAgent:
                 withheld = True
                 reason = ("Les outils financiers attendus pour cette demande n'ont pas tous été exécutés avec succès (manquant : "
                           f"{', '.join(missing)}). La réponse du modèle n'est pas affichée.")
+        claims_dict, fallback = None, None
+        if not withheld and text and records and error is None:
+            universe = getattr(getattr(self.service, "bundle", None), "universe", None)
+            crep = check_claims(text, records, self.service.profiles, self.ctx.profile_id, universe)
+            claims_dict = crep.to_dict()
+            if not crep.ok:
+                withheld = True
+                kinds = ", ".join(sorted({v.category for v in crep.violations}))
+                reason = (f"Le contrôle automatique a relevé {len(crep.violations)} affirmation(s) du texte de l'IA non conforme(s) aux résultats des outils "
+                          f"({kinds}). Le texte n'est pas affiché comme conclusion fiable.")
+                fallback = build_fallback(records, question)
         if withheld and agent is not None:
             del agent.messages[n_msgs:]   # ne pas réinjecter une réponse non validée dans le contexte
             text = None
         tr = TurnResult(turn=turn, question=question, text=text, withheld=withheld, withheld_reason=reason,
                         error=error, tool_records=records, duration_s=round(time.perf_counter() - t0, 2),
                         model_id=self.model_id, region=self.region, usage=usage, cycles=cycles,
-                        started_at=started, caveat=caveat, context=context, unmatched_numbers=tuple(unmatched_list))
+                        started_at=started, caveat=caveat, context=context, unmatched_numbers=tuple(unmatched_list),
+                        claims=claims_dict, fallback=fallback)
         self.turns.append(tr)
         return tr

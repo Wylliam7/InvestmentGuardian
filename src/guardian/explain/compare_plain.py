@@ -49,8 +49,14 @@ def plain_tradeoffs(cmp_) -> list[str]:
         out.append(f"{wide} est plus réparti entre ses positions : environ {fr(ew)} positions de poids égal ({nw} actifs) contre {fr(en)} pour {narrow} ({nn} actifs).")
     else:
         out.append(f"A et B ont une répartition comparable : environ {fr(ea)} et {fr(eb)} positions de poids égal ({na} et {nb} actifs).")
+    if any(x.asset_class in ("etf_equity", "etf_bond") for x in (*a.assets, *b.assets)):
+        out[-1] += " Cette mesure porte sur les poids des lignes, pas sur les entreprises sous-jacentes des FNB, dont la diversification n'est pas mesurée."
     return out
 
 
 COMPARE_FOOTER = ("Ces écarts décrivent le passé (2021-2026), sur un seul cycle de marché. Aucun des deux portefeuilles n'est désigné comme meilleur : "
                   "le choix dépend de vos objectifs et de votre tolérance au risque.")
+
+COMPARE_SENSITIVITY_NOTE = ("Pour voir comment un changement d'allocation modifie les indicateurs, changez la répartition de B (par exemple le poids de NVIDIA) : "
+                            "les mêmes données historiques et la même méthode de calcul s'appliquent à A et B. Cette comparaison ne teste pas d'autres périodes, "
+                            "ne modélise ni frais ni impôts et ne prévoit rien : elle décrit une seule trajectoire passée.")
