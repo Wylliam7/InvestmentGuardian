@@ -5,6 +5,9 @@ from types import SimpleNamespace as NS
 
 import pytest
 from conftest import StepModel
+
+pytestmark = pytest.mark.legacy_ui
+
 from guardian.agent.agent import SYSTEM_PROMPT, GuardianAgent
 from guardian.agent.claims import check_claims
 from guardian.agent.fallback import SCENARIO_LIMIT, build_fallback, cited_assets, verified_facts

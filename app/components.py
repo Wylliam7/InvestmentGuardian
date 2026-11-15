@@ -120,6 +120,80 @@ def render_facts_used(t) -> None:
     render_verified_facts(t)
 
 
+def render_v5_request(t, model_id: str, region: str, select_profile=None) -> None:
+    """Affiche une réponse V5 et sépare le texte du modèle des résultats d'outils réellement retournés."""
+    st.markdown(f"**Question :** {t.question}")
+    st.caption(f"Modèle : `{model_id}` · région : `{region}`")
+    if t.error:
+        st.error(t.notice or "La génération a échoué.")
+        st.info("Les indicateurs et le Guardian Check restent disponibles : ils proviennent du moteur Python.")
+    elif t.notice and (t.calls or not t.confirmed):
+        st.warning(f"**Analyse incomplète.** {t.notice}")
+        failed = [f"{c.tool} ({c.error})" for c in t.calls if c.status != "ok"]
+        if failed:
+            st.warning("Au moins un outil a échoué : " + ", ".join(failed))
+    elif t.notice:
+        st.warning(t.notice)
+    if t.clarification_profiles and select_profile:
+        cols = st.columns(len(t.clarification_profiles))
+        for col, (pid, name) in zip(cols, t.clarification_profiles):
+            col.button(f"Sélectionner {name}", key=f"v5_select_profile_{t.request_id}_{pid}",
+                       on_click=select_profile, args=(pid,))
+    has_failed_call = any(c.status != "ok" for c in t.calls)
+    if t.text and not has_failed_call:
+        st.markdown("**Réponse de l'assistant IA** — interprétation générée par le modèle ; les faits vérifiés ci-dessous proviennent uniquement des outils exécutés.")
+        st.markdown(t.text)
+    if t.facts:
+        with st.expander("Faits et contrôles vérifiés (résultats des outils)", expanded=True):
+            for title, lines in t.facts:
+                st.markdown(f"**{title}**\n" + "\n".join(f"- {line}" for line in lines))
+    with st.expander("Trace Strands et appels d'outils", expanded=False):
+        if t.model_tool_uses:
+            st.markdown("**Appels d'outils émis par le modèle**")
+            st.json([{"toolUseId": uid, "tool": name} for uid, name in t.model_tool_uses])
+        else:
+            st.caption("Aucun appel d'outil émis par le modèle.")
+        st.markdown("**Résultats et statuts des appels**")
+        st.json([{
+            "id": c.id,
+            "toolUseId": c.tool_use_id,
+            "tool": c.tool,
+            "arguments": c.arguments,
+            "status": c.status,
+            "duration_ms": c.duration_ms,
+            "reused_from": c.reused_from,
+            "error": c.error,
+            "result": c.result,
+        } for c in t.calls])
+        st.caption(f"Provenance des appels : {'valide' if t.provenance_ok else 'non valide'} · "
+                   f"calculs réellement exécutés : {t.computed} · cycles : {t.cycles if t.cycles is not None else 'n.d.'}")
+    succeeded = sum(c.status == "ok" for c in t.calls)
+    success_suffix = f" ({succeeded} réussi(s))" if t.calls else ""
+    st.caption(f"Requête n° {t.request_id} · {len(t.calls)} appel(s) d'outil dans cette requête{success_suffix} · {t.duration_s} s · "
+               f"jetons : {t.usage.get('inputTokens', '?')} entrée / {t.usage.get('outputTokens', '?')} sortie")
+
+
+def export_v5_trace(history: list, model_id: str, region: str) -> list[dict]:
+    """Prépare une trace téléchargeable sans exposer de détails hors de la requête."""
+    return [{
+        "request_id": t.request_id,
+        "question": t.question,
+        "model_id": model_id,
+        "region": region,
+        "confirmed": t.confirmed,
+        "notice": t.notice,
+        "provenance_ok": t.provenance_ok,
+        "model_tool_uses": t.model_tool_uses,
+        "calls": [{
+            "id": c.id, "toolUseId": c.tool_use_id, "tool": c.tool, "arguments": c.arguments,
+            "status": c.status, "duration_ms": c.duration_ms, "reused_from": c.reused_from,
+            "error": c.error, "result": c.result,
+        } for c in t.calls],
+        "messages": t.messages,
+        "clarification_profiles": t.clarification_profiles,
+    } for t in history]
+
+
 # ----------------------------------------------------------------------------- requêtes de l'assistant
 def render_request(t, service, select_profile_cb, active_profile: str, show_facts: bool = False) -> None:
     """Affiche UNE requête : son statut ne dépend que des outils exécutés pendant cette requête."""

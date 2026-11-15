@@ -20,13 +20,15 @@ import streamlit as st  # noqa: E402
 
 from charts import (allocation_figure, comparison_drawdown_figure, comparison_performance_figure,  # noqa: E402
                     drawdown_figure, performance_figure)
-from components import render_card, render_esg_section, render_request, render_summary  # noqa: E402
+from components import (export_v5_trace, render_card, render_esg_section, render_request, render_summary,
+                        render_v5_request)  # noqa: E402
 from guardian.agent.agent import (EXPLAIN_ESG_REQUIRED, EXPLAIN_RISKS_LABEL, EXPLAIN_RISKS_REQUIRED, GuardianAgent,  # noqa: E402
                                   explain_risks_task)
 from guardian.agent.aws_status import credentials_status, test_bedrock_connection  # noqa: E402
 from guardian.agent.service import GuardianService  # noqa: E402
 from guardian.agent.tools import SessionContext  # noqa: E402
 from guardian.agent.tracer import Tracer  # noqa: E402
+from guardian.agent_v5.agent import AgentV5  # noqa: E402
 from guardian.data.loader import DataError  # noqa: E402
 from guardian.explain.cards import LEVELS, PLAIN_TITLES, build_cards, diversification_sentence  # noqa: E402
 from guardian.explain.compare_plain import COMPARE_FOOTER, COMPARE_SENSITIVITY_NOTE, plain_tradeoffs  # noqa: E402
@@ -103,6 +105,7 @@ PROFILE_IDS = list(service.profiles)
 DEFAULT_A, DEFAULT_B = DEFAULTS[PROFILE_IDS[0]]["a"], DEFAULTS[PROFILE_IDS[0]]["b"]
 SUGGESTED_QUESTIONS = ("Pourquoi ce portefeuille pourrait-il présenter des risques pour ce profil ?",
                        "Compare le portefeuille A avec le portefeuille B. Quels compromis historiques observes-tu ?")
+V5_MODEL_ID = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
 
 
 def fmt_pts(x):
@@ -123,6 +126,7 @@ if "slots" not in st.session_state:
     st.session_state.tracer = Tracer()
     st.session_state.ctx = SessionContext(weights={}, profile_id=PROFILE_IDS[0])
     st.session_state.agent = GuardianAgent(service, st.session_state.ctx, st.session_state.tracer)
+    st.session_state.v5_agent = AgentV5(service, st.session_state.ctx, model_id=V5_MODEL_ID)
     st.session_state.history = []
     st.session_state.touched = False            # l'utilisateur n'a encore choisi ni modifié aucune allocation
     st.session_state.last_profile = PROFILE_IDS[0]
@@ -132,9 +136,13 @@ if "slots" not in st.session_state:
     st.session_state.explain_turn = None        # dernière demande « Explique-moi mes risques avec l'IA »
     st.session_state.q_text = SUGGESTED_QUESTIONS[0]
 
+if "v5_agent" not in st.session_state:
+    st.session_state.v5_agent = AgentV5(service, st.session_state.ctx, model_id=V5_MODEL_ID)
+
 slots = st.session_state.slots
 ctx: SessionContext = st.session_state.ctx
 agent: GuardianAgent = st.session_state.agent
+v5_agent: AgentV5 = st.session_state.v5_agent
 
 
 def load_preset_cb(key: str) -> None:
@@ -360,13 +368,13 @@ with tab_dash:
 
     st.markdown("### Aller plus loin avec l'IA")
     explain_clicked = st.button(EXPLAIN_RISKS_LABEL, type="primary", key="explain_btn",
-                                help="L'assistant IA (Amazon Bedrock, Nova 2 Lite) explique ces résultats en français simple, en s'appuyant sur les outils Python.")
-    st.caption("L'IA reformule et relie les résultats calculés ci-dessous à votre profil. Elle ne modifie ni les chiffres, ni les repères, ni les statuts, "
-               "et ne donne aucun conseil d'achat ou de vente.")
+                                                help="L'assistant IA (Amazon Bedrock, Claude Haiku 4.5) choisit et appelle les outils Python.")
+    st.caption("Le modèle choisit et appelle les outils nécessaires. Le texte est une interprétation ; les faits et statuts réellement retournés par les outils sont affichés séparément. "
+               "Aucun conseil d'achat ou de vente n'est fourni.")
     if explain_clicked:
         with st.spinner("L'assistant IA analyse votre portefeuille avec les outils Python…"):
             required = EXPLAIN_RISKS_REQUIRED + (EXPLAIN_ESG_REQUIRED if HAS_ESG else ())
-            tr = agent.ask(EXPLAIN_RISKS_LABEL, task=explain_risks_task(profile["display_name"], has_esg=HAS_ESG), required_tools=required, kind="explain_risks")
+            tr = v5_agent.ask(EXPLAIN_RISKS_LABEL)
         st.session_state.history.append(tr)
         st.session_state.explain_turn = tr
     et = st.session_state.explain_turn
@@ -375,7 +383,7 @@ with tab_dash:
         if et.context and et.context.get("profile_id") == profile_id and et.context.get("weights_a_pct") == current:
             with st.container(border=True):
                 st.markdown("#### Explication de l'assistant IA")
-                render_request(et, service, select_profile_cb, profile_id, show_facts=True)
+                render_v5_request(et, v5_agent.model_id, v5_agent.region, select_profile_cb)
         else:
             st.info("La dernière explication de l'IA concernait un autre profil ou un autre portefeuille. Cliquez à nouveau sur le bouton pour l'actualiser.")
 
@@ -565,17 +573,17 @@ with tab_ai:
         submitted = st.form_submit_button("Poser la question à l'agent")
     if submitted and q.strip():
         with st.spinner("L'assistant interroge Amazon Bedrock et appelle les outils…"):
-            st.session_state.history.append(agent.ask(q.strip()))
+            st.session_state.history.append(v5_agent.ask(q.strip()))
     history = st.session_state.history
     if history:
         with st.container(border=True):
-            render_request(history[-1], service, select_profile_cb, profile_id)
+            render_v5_request(history[-1], v5_agent.model_id, v5_agent.region, select_profile_cb)
         older = history[:-1][-5:]
         if older:
             st.markdown(f"#### Requêtes précédentes ({len(history) - 1})")
             for t_ in reversed(older):
                 with st.container(border=True):
-                    render_request(t_, service, select_profile_cb, profile_id)
+                    render_v5_request(t_, v5_agent.model_id, v5_agent.region, select_profile_cb)
         st.caption("Chaque requête n'est validée que par les outils exécutés pendant cette requête. Les réponses rejetées ne sont pas affichées comme des analyses.")
 
     st.header("Sources, hypothèses et limites")
@@ -597,9 +605,11 @@ with tab_ai:
         for x in prov["limitations"]:
             st.markdown(f"- {x}")
         st.markdown("- Les repères du Guardian Check sont des heuristiques pédagogiques (voir `config/guardian_rules.yaml`), pas des normes.")
-    if agent.tracer.records:
+    if v5_agent.history:
         with st.expander("Exporter la trace technique de toutes les requêtes (JSON)"):
-            st.download_button("Télécharger la trace (JSON)", json.dumps(agent.tracer.export(), ensure_ascii=False, indent=2),
+            st.download_button("Télécharger la trace Strands (JSON)",
+                               json.dumps(export_v5_trace(v5_agent.history, v5_agent.model_id, v5_agent.region),
+                                          ensure_ascii=False, indent=2),
                                file_name="trace_investment_guardian.json", mime="application/json")
 
 # ----------------------------------------------------------------------------- barre latérale (simple ; technique replié)
@@ -619,16 +629,18 @@ with st.sidebar:
     st.caption("Simulation éducative : aucun conseil financier personnalisé, aucune transaction.")
     with st.expander("Paramètres avancés et diagnostic technique"):
         st.markdown("**Intégration AWS**")
-        st.markdown("Service utilisé : Amazon Bedrock (modèle Amazon Nova 2 Lite), via Strands Agents.")
-        st.markdown(f"Identifiant exact du modèle : `{agent.model_id}`")
-        st.markdown(f"Région AWS : `{agent.region}`")
+        st.markdown("Service utilisé : Amazon Bedrock (Claude Haiku 4.5), via Strands Agents.")
+        st.markdown(f"Identifiant exact du modèle : `{v5_agent.model_id}`")
+        st.markdown(f"Région AWS : `{v5_agent.region}`")
         st.markdown("Authentification : " + (AUTH_LABELS.get(cs.get("source"), cs.get("source") or "aucune") if cs["credentials_found"] else "aucune détectée")
                     + " (aucun identifiant n'est affiché ni stocké).")
-        n_calls = len(agent.tracer.records)
+        n_calls = sum(len(t.calls) for t in v5_agent.history)
         st.markdown(f"Cette session : {len(st.session_state.history)} requête(s) à l'assistant, {n_calls} appel(s) d'outil journalisé(s).")
-        if st.button("Tester la connexion Bedrock", key="test_bedrock"):
+        can_test_bedrock = cs["credentials_found"]
+        if st.button("Tester la connexion Bedrock", key="test_bedrock", disabled=not can_test_bedrock,
+                     help="Configurez d'abord une authentification AWS détectée par boto3."):
             with st.spinner("Requête minimale…"):
-                st.session_state.conn_test = test_bedrock_connection(agent.model_id, agent.region)
+                st.session_state.conn_test = test_bedrock_connection(v5_agent.model_id, v5_agent.region)
         ct = st.session_state.get("conn_test")
         if ct:
             if ct["ok"]:

@@ -1,4 +1,4 @@
-"""Agent V5 : Nova 2 Lite (Strands, Bedrock) choisit et appelle les outils ; Python calcule.
+"""Agent V5 : le modèle Bedrock configuré (Strands) choisit et appelle les outils ; Python calcule.
 
 Déroulé d'une requête :
 1. contexte figé et outils neufs pour la requête (aucune préexécution : aucun outil n'est appelé avant le modèle) ;
@@ -17,7 +17,8 @@ import time
 import unicodedata
 from dataclasses import dataclass, field
 
-from guardian.agent.agent import DEFAULT_MODEL_ID, DEFAULT_REGION, map_error, profiles_mentioned
+from guardian.agent.agent import (DEFAULT_MODEL_ID, DEFAULT_REGION, asks_about_esg, clarification_message,
+                                  map_error, profile_conflict, profiles_mentioned)
 from guardian.agent.fallback import verified_facts
 from guardian.agent.tools import SessionContext
 from guardian.agent_v5.tools import RequestTools, freeze
@@ -83,6 +84,7 @@ class ResultV5:
     context: dict = field(default_factory=dict)
     computed: int = 0                     # calculs réellement exécutés (réutilisations exclues)
     messages: list = field(default_factory=list)   # historique Strands de la requête (pour l'audit)
+    clarification_profiles: list[tuple[str, str]] = field(default_factory=list)
 
 
 def _tool_uses(messages: list) -> list:
@@ -136,6 +138,15 @@ class AgentV5:
     def _ask(self, question: str) -> ResultV5:
         self._request_id += 1
         rid, t0 = self._request_id, time.perf_counter()
+        conflict = profile_conflict(question, self.ctx.profile_id, self.service.profiles)
+        if conflict:
+            return ResultV5(request_id=rid, question=question, text=None, confirmed=False,
+                            notice=clarification_message(conflict, self.service.profiles), relaunched=False,
+                            calls=[], model_tool_uses=[], provenance_ok=True, sdk_tool_counts={}, facts=[],
+                            duration_s=round(time.perf_counter() - t0, 2),
+                            context=freeze(self.ctx, {self.ctx.profile_id, *conflict["named"]}).snapshot(),
+                            computed=0, messages=[],
+                            clarification_profiles=[(pid, self.service.profiles[pid]["display_name"]) for pid in conflict["named"]])
         frozen = freeze(self.ctx, {self.ctx.profile_id, *profiles_mentioned(question, self.service.profiles)})
         rt = RequestTools(self.service, frozen, rid, compact=self.compact)              # outils neufs : aucun résultat d'une requête précédente
         text, error, relaunched, agent = None, None, False, None
@@ -163,10 +174,16 @@ class AgentV5:
             confirmed, notice = False, "Les appels d'outils tracés ne correspondent pas aux appels émis par le modèle : réponse non confirmée."
         elif guardian_needed and not self._guardian_ok(rt.calls):
             confirmed, notice = False, UNCONFIRMED
+        elif asks_about_esg(question) and not any(c.tool == "check_esg_preferences" and c.status == "ok" for c in rt.calls):
+            confirmed, notice, text = False, (
+                "Analyse non confirmée : l'outil check_esg_preferences n'a pas retourné de résultat pour cette question ESG."
+            ), None
         elif any(c.status != "ok" for c in rt.calls):
             notice = "Au moins un outil a échoué : " + ", ".join(sorted({f"{c.tool} ({c.error})" for c in rt.calls if c.status != "ok"}))
             confirmed = self._guardian_ok(rt.calls) or not guardian_needed
-        if not text and error is None:
+        elif not rt.calls and re.search(r"\d", text or ""):
+            confirmed, notice, text = False, "Aucun outil n'a retourné de faits pour cette réponse.", None
+        if not text and error is None and notice is None:
             confirmed, notice = False, "Le modèle n'a retourné aucun texte."
         usage = {k: int(((getattr(metrics, "accumulated_usage", None) or {}).get(k, 0))) for k in ("inputTokens", "outputTokens", "totalTokens")}
         facts = verified_facts([c for c in rt.calls if c.reused_from is None], question)

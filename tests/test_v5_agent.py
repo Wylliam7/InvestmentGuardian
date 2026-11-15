@@ -103,6 +103,38 @@ def test_factual_question_without_risk_wording_is_not_relaunched(real_service):
     assert not r.relaunched and r.confirmed and [c.tool for c in r.calls] == [EV]
 
 
+def test_general_educational_answer_without_tools_is_kept(real_service):
+    answer = "Un FNB regroupe plusieurs placements dans un même produit."
+    ag, _, _ = make(real_service, [("text", answer)])
+    r = ag.ask("Qu'est-ce qu'un FNB ?")
+    assert r.confirmed and r.text == answer and r.calls == []
+
+
+def test_unverified_numeric_answer_without_tools_is_still_withheld(real_service):
+    ag, _, _ = make(real_service, [("text", "Le rendement est de 45 %.")])
+    r = ag.ask("Quel est le rendement de mon portefeuille ?")
+    assert not r.confirmed and r.text is None and r.notice == "Aucun outil n'a retourné de faits pour cette réponse."
+
+
+@pytest.mark.parametrize("question,profile", [
+    ("Pourquoi ce portefeuille pourrait-il être risqué pour Robert ?", "amira"),
+    ("Mateo veut éviter les entreprises controversées : que montrent les données ESG ?", "robert"),
+])
+def test_profile_conflict_stops_v5_before_model_or_tools(real_service, question, profile):
+    model = StepModel([("text", "Ne devrait pas être appelé.")])
+    ctx = SessionContext(dict(AMIRA_A), profile)
+    ag = AgentV5(real_service, ctx, model_factory=lambda: model)
+    r = ag.ask(question)
+    assert not r.confirmed and r.text is None and r.calls == [] and model.i == 0
+    assert "Sélectionnez" in r.notice and "Aucune analyse n'a été lancée" in r.notice
+
+
+def test_esg_question_without_successful_esg_tool_is_not_confirmed(real_service):
+    ag, _, _ = make(real_service, [("tools", [EV]), ("text", "Le portefeuille respecte les préférences ESG.")])
+    r = ag.ask("Ce portefeuille respecte-t-il mes préférences ESG ?")
+    assert not r.confirmed and r.text is None and "check_esg_preferences" in r.notice
+
+
 # ---------------------------------------------------------------- doublons, anciennes requêtes, contexte figé
 def test_identical_calls_are_not_recomputed_and_the_reuse_is_traced(real_service):
     ag, _, _ = make(real_service, [("tools", [CK, CK]), ("tools", [CK]), ("text", "Réponse.")])
@@ -173,4 +205,3 @@ def test_system_prompt_is_short_and_has_no_preexecuted_data(real_service):
     ag.ask(Q)
     assert len(SYSTEM_PROMPT_V5) < 2600
     assert "NVDA" not in model.prompts[0] and "%" not in model.prompts[0]          # le message initial ne contient aucune donnée calculée
-

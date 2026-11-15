@@ -54,14 +54,14 @@ def test_app_renders_engine_results_without_aws(monkeypatch, real_service):
 def test_app_tool_failure_shows_incomplete_analysis_and_no_model_text(monkeypatch):
     """Panne d'outil simulée + faux modèle qui improvise un chiffre : rien d'improvisé ne doit être affiché."""
     from conftest import ScriptedModel
-    from guardian.agent import agent as agent_mod
+    from guardian.agent_v5 import agent as agent_mod
     model = ScriptedModel(["evaluate_portfolio"], final_text="La volatilité est de 12,3 % (calcul direct).")
-    original = agent_mod.GuardianAgent.__init__
+    original = agent_mod.AgentV5.__init__
 
     def patched(self, *a, **kw):
         kw["model_factory"] = lambda: model
         original(self, *a, **kw)
-    monkeypatch.setattr(agent_mod.GuardianAgent, "__init__", patched)
+    monkeypatch.setattr(agent_mod.AgentV5, "__init__", patched)
     at = _run_app()
     next(c for c in at.sidebar.checkbox if "Simuler une panne" in c.label).check()
     at.run()

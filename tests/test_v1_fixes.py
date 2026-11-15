@@ -2,6 +2,8 @@
 import tomllib
 
 import pytest
+
+pytestmark = pytest.mark.legacy_ui
 from streamlit.testing.v1 import AppTest
 
 from conftest import REPO, StepModel
@@ -270,7 +272,7 @@ def test_replaced_slots_get_a_new_editor_version_so_old_edits_cannot_reappear():
 def test_theme_and_layout_for_readability():
     cfg = tomllib.loads((REPO / ".streamlit" / "config.toml").read_text())["theme"]
     assert cfg["baseFontSize"] >= 16 and float(cfg["headingFontSizes"][0].rstrip("rem")) >= 3.0
-    src = (REPO / "app" / "app.py").read_text()
+    src = (REPO / "app" / "app.py").read_text(encoding="utf-8")
     assert 'layout="wide"' in src and "max-width: 100%" in src and "1250px" not in src
     assert "font-size: 3.4rem" in src and 'st.title("🛡️ Investment Guardian")' in src
     assert not any(w in (REPO / ".streamlit" / "config.toml").read_text().lower() for w in ("secret", "token", "password"))

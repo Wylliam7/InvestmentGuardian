@@ -4,6 +4,8 @@ import re
 
 import pandas as pd
 import pytest
+
+pytestmark = pytest.mark.legacy_ui
 from streamlit.testing.v1 import AppTest
 
 from conftest import REPO, StepModel, V2_MAIN_LABELS, v2_expected_metrics
