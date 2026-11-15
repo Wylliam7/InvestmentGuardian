@@ -54,25 +54,56 @@ AUTH_LABELS = {"iam-role": "Rôle IAM (identifiants temporaires)", "env": "Varia
 
 st.markdown("""
 <style>
-.block-container {padding-top: 1.4rem; padding-left: 2.2rem; padding-right: 2.2rem; max-width: 100%;}
-h1 {font-size: 3.4rem !important; font-weight: 800 !important; line-height: 1.1 !important; margin-bottom: .1rem !important;}
-h2, h3 {margin-top: 1.1rem !important;}
-h4 {margin-top: .3rem !important; margin-bottom: .4rem !important;}
-.ig-sub {font-size: 1.4rem; margin: 0 0 .2rem 0; opacity: .9;}
-.ig-banner {background: #FFF4D6; color: #3D2C00; border-left: 6px solid #B7791F; padding: .8rem 1.1rem;
-            border-radius: 4px; margin: .4rem 0 1.2rem 0; font-size: 1.02rem; line-height: 1.5;}
-.ig-banner b {color: #2B1F00;}
-button[data-baseweb="tab"] p {font-size: 1.08rem; font-weight: 600;}
-[data-testid="stMetricLabel"] p {font-size: 1.02rem;}
-[data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li {line-height: 1.55;}
-[data-testid="stVerticalBlockBorderWrapper"] {margin-bottom: .5rem;}
+:root {--ig-navy:#102A43; --ig-blue:#1F5A85; --ig-teal:#168F8B; --ig-ink:#243B53; --ig-muted:#627D98;
+       --ig-line:#D9E2EC; --ig-surface:#FFFFFF; --ig-soft:#F4F7FA; --ig-warm:#FFF8E7;}
+.stApp {background: linear-gradient(180deg, #F7FAFC 0%, #FFFFFF 30rem); color: var(--ig-ink);}
+.block-container {max-width: 100%; padding: 2.4rem 2.5rem 4rem;}
+h1 {color: var(--ig-navy); font-size: 3.4rem; font-size: clamp(2.4rem, 5vw, 3.4rem) !important; font-weight: 800 !important;
+    letter-spacing: -.045em; line-height: 1.05 !important; margin: .3rem 0 .2rem !important;}
+h2 {color: var(--ig-navy); font-size: 2rem !important; letter-spacing: -.025em; margin-top: 2rem !important;}
+h3 {color: var(--ig-navy); font-size: 1.35rem !important; margin-top: 1.6rem !important;}
+h4 {color: var(--ig-ink); margin-top: .3rem !important; margin-bottom: .5rem !important;}
+.ig-sub {color: var(--ig-blue); font-size: 1.25rem; font-weight: 600; margin: 0 0 .15rem;}
+.ig-banner {color: #3D2C00; background: #FFF4D6; background: var(--ig-warm); color: #5B4613; border: 1px solid #F0D98A; border-left: 5px solid #D69E2E;
+            padding: .9rem 1.15rem; border-radius: 12px; margin: 1rem 0 1.6rem; font-size: .98rem; line-height: 1.55;
+            box-shadow: 0 4px 14px rgba(16,42,67,.04);}
+.ig-banner b {color: #4A390F;}
+button[data-baseweb="tab"] {border-radius: 10px 10px 0 0; margin-right: .25rem;}
+button[data-baseweb="tab"] p {font-size: 1rem; font-weight: 700;}
+[data-baseweb="tab-list"] {gap: .35rem; border-bottom: 1px solid var(--ig-line); margin-bottom: 1.5rem;}
+[data-baseweb="tab-highlight"] {background: var(--ig-teal);}
+[data-testid="stMetric"] {background: var(--ig-surface); border: 1px solid var(--ig-line); border-radius: 14px;
+                           padding: 1rem 1.1rem; box-shadow: 0 5px 16px rgba(16,42,67,.06);}
+[data-testid="stMetricLabel"] p {color: var(--ig-muted); font-size: .88rem; font-weight: 700;}
+[data-testid="stMetricValue"] {color: var(--ig-navy); font-weight: 800;}
+[data-testid="stMetricDelta"] {font-size: .82rem;}
+[data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li {line-height: 1.58;}
+[data-testid="stVerticalBlockBorderWrapper"] {background: rgba(255,255,255,.82); border: 1px solid var(--ig-line);
+    border-radius: 16px; margin: .7rem 0; box-shadow: 0 6px 18px rgba(16,42,67,.045);}
+[data-testid="stExpander"] {border: 1px solid var(--ig-line); border-radius: 12px; background: #FBFCFE; margin: .5rem 0;}
+[data-testid="stExpander"] summary p {color: var(--ig-navy); font-weight: 700;}
+[data-testid="stTextInput"] input, [data-testid="stTextArea"] textarea,
+[data-baseweb="select"] > div {border-radius: 10px; border-color: #BCCCDC;}
+[data-testid="stDataEditor"] {border: 1px solid var(--ig-line); border-radius: 12px; overflow: hidden;}
+.stButton > button {border-radius: 9px; font-weight: 700; min-height: 2.5rem;}
+.stButton > button[kind="primary"] {background: var(--ig-navy); border-color: var(--ig-navy);}
+.stButton > button[kind="primary"]:hover {background: var(--ig-blue); border-color: var(--ig-blue);}
+[data-testid="stSidebar"] {background: #F1F6FA; border-right: 1px solid var(--ig-line);}
+[data-testid="stSidebar"] h3 {font-size: 1.15rem !important;}
+[data-testid="stAlert"] {border-radius: 12px;}
+@media (max-width: 800px) {
+  .block-container {padding: 1.25rem 1rem 3rem;}
+  h1 {font-size: 2.35rem !important;}
+  [data-baseweb="tab-list"] {overflow-x: auto;}
+  button[data-baseweb="tab"] p {font-size: .88rem;}
+}
 </style>
 """, unsafe_allow_html=True)
 
 # ----------------------------------------------------------------------------- en-tête
 st.title("🛡️ Investment Guardian")
 st.markdown('<p class="ig-sub">Comprenez les risques de vos décisions d\'investissement.</p>', unsafe_allow_html=True)
-st.caption("Your decisions. Your risks. Explained.")
+st.caption("Vos décisions. Vos risques. Expliqués avec des données historiques. · Your decisions. Your risks. Explained.")
 st.markdown('<div class="ig-banner"><b>Simulation éducative — aucun conseil financier personnalisé.</b> '
             "Aucune transaction réelle. Les résultats décrivent le passé (2021-11-12 au 2026-11-12) et ne prédisent pas l'avenir. "
             "Les repères de vigilance sont pédagogiques, pas des normes.</div>", unsafe_allow_html=True)
@@ -222,7 +253,8 @@ def slot_label(key: str) -> str:
 
 
 # ----------------------------------------------------------------------------- sélection du profil
-top1, top2 = st.columns([1, 3])
+st.markdown("### Commencez par votre situation")
+top1, top2 = st.columns([1, 3], vertical_alignment="center")
 profile_id = top1.selectbox("Profil de l'investisseur", PROFILE_IDS, key="profile_id", on_change=on_profile_change,
                             format_func=lambda p: service.profiles[p]["display_name"],
                             help="Robert et Amira sont des personnages fictifs du cas officiel du Datathon.")

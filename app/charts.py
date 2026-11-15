@@ -6,14 +6,19 @@ import plotly.graph_objects as go
 from guardian.finance.analysis import AnalysisResult
 from guardian.finance.metrics import drawdown_series
 
-PORTFOLIO_COLOR = "#0B3D91"
-ASSET_COLORS = ["#C0392B", "#2E86C1", "#27AE60", "#8E44AD", "#D68910", "#7F8C8D"]
+PORTFOLIO_COLOR = "#1F5A85"
+ASSET_COLORS = ["#168F8B", "#5B8DB8", "#D69E2E", "#7B61A8", "#C05640", "#829AB1"]
 
 
 def _layout(fig: go.Figure, title: str, yaxis: str) -> go.Figure:
-    fig.update_layout(title=title, yaxis_title=yaxis, template="plotly_white", height=380,
-                      margin=dict(l=10, r=10, t=50, b=10), hovermode="x unified",
-                      legend=dict(orientation="h", y=-0.15))
+    fig.update_layout(title=dict(text=title, font=dict(size=16, color="#102A43")),
+                      yaxis_title=yaxis, template="plotly_white", height=380,
+                      margin=dict(l=18, r=18, t=58, b=18), hovermode="x unified",
+                      paper_bgcolor="#FFFFFF", plot_bgcolor="#FBFCFE",
+                      font=dict(family="Arial, sans-serif", color="#486581", size=12),
+                      xaxis=dict(showgrid=False, linecolor="#D9E2EC"),
+                      yaxis=dict(gridcolor="#E6EDF3", zerolinecolor="#D9E2EC"),
+                      legend=dict(orientation="h", y=-0.15, bgcolor="rgba(255,255,255,.7)"))
     return fig
 
 
@@ -33,11 +38,11 @@ def performance_figure(result: AnalysisResult) -> go.Figure:
 def drawdown_figure(result: AnalysisResult) -> go.Figure:
     dd = 100.0 * drawdown_series(result.value)
     fig = go.Figure(go.Scatter(x=dd.index, y=dd, fill="tozeroy", name="Drawdown du portefeuille",
-                               line=dict(color="#C0392B")))
+                               line=dict(color="#C05640", width=2), fillcolor="rgba(192,86,64,.12)"))
     return _layout(fig, "Baisse depuis le dernier sommet (drawdown, %)", "%")
 
 
-B_COLOR = "#D68910"
+B_COLOR = "#168F8B"
 
 
 def comparison_performance_figure(a: AnalysisResult, b: AnalysisResult, label_a: str = "A", label_b: str = "B") -> go.Figure:
