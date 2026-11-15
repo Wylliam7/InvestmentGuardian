@@ -24,11 +24,16 @@ __pycache__/
 build/
 dist/
 
-# --- Données officielles (licence : redistribution à confirmer, voir DECISIONS H-03) ---
-Datathon2026/
+# --- Données officielles : seuls les trois CSV autorisés sont versionnés ---
+Datathon2026/*
+!Datathon2026/alphaforge_starter/
+Datathon2026/alphaforge_starter/*
 data/raw/
 *.csv
 !config/*.csv
+!Datathon2026/alphaforge_starter/assets_universe.csv
+!Datathon2026/alphaforge_starter/prices_daily.csv
+!Datathon2026/alphaforge_starter/fx_usdcad_daily.csv
 
 # --- Fichiers de travail locaux ---
 scratch/

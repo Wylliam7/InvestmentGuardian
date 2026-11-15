@@ -1,4 +1,4 @@
-"""Aucune donnée sensible ni donnée officielle dans les fichiers suivis (ou suivables) par Git."""
+"""Aucune donnée sensible ni donnée non autorisée dans les fichiers suivis par Git."""
 import re
 import subprocess
 
@@ -14,6 +14,12 @@ PATTERNS = {
     "jeton GitHub": re.compile(r"\b(ghp|gho|ghs|ghu)_[A-Za-z0-9]{30,}\b|github_pat_[A-Za-z0-9_]{30,}"),
     "clé privée": re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
     "jeton Slack": re.compile(r"\bxox[abp]-[A-Za-z0-9-]{10,}"),
+}
+
+AUTHORIZED_DATA_FILES = {
+    "Datathon2026/alphaforge_starter/assets_universe.csv",
+    "Datathon2026/alphaforge_starter/prices_daily.csv",
+    "Datathon2026/alphaforge_starter/fx_usdcad_daily.csv",
 }
 
 
@@ -37,8 +43,10 @@ def test_no_secret_patterns_in_tracked_or_trackable_files():
 
 def test_sensitive_and_official_data_files_are_not_trackable():
     files = candidate_files()
-    forbidden = [f for f in files if f == ".env" or f.startswith(".env.") and f != ".env.example" or f.endswith(".csv")
-                 or f.startswith("Datathon2026/") or f.startswith(".venv/") or (f.startswith("traces/") and f != "traces/.gitkeep")
+    forbidden = [f for f in files if f == ".env" or f.startswith(".env.") and f != ".env.example"
+                 or (f.endswith(".csv") and f not in AUTHORIZED_DATA_FILES)
+                 or (f.startswith("Datathon2026/") and f not in AUTHORIZED_DATA_FILES)
+                 or f.startswith(".venv/") or (f.startswith("traces/") and f != "traces/.gitkeep")
                  or f.endswith((".pem", ".key"))]
     assert not forbidden, forbidden
     assert ".env.example" in files and "config/guardian_rules.yaml" in files
