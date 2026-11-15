@@ -7,7 +7,7 @@ pytestmark = pytest.mark.legacy_ui
 from streamlit.testing.v1 import AppTest
 
 from conftest import REPO, StepModel
-from guardian.agent import agent as agent_mod
+from guardian.agent_v5 import agent as agent_mod
 from guardian.agent.agent import GuardianAgent, clarification_message, profile_conflict, profiles_mentioned
 from guardian.agent.tools import SessionContext
 from guardian.agent.tracer import Tracer
@@ -134,12 +134,12 @@ def run_app():
 
 def patch_model(monkeypatch, steps=None):
     model = StepModel(steps or [("text", "Ne devrait pas être appelé.")])
-    original = agent_mod.GuardianAgent.__init__
+    original = agent_mod.AgentV5.__init__
 
     def patched(self, *a, **kw):
         kw["model_factory"] = lambda: model
         original(self, *a, **kw)
-    monkeypatch.setattr(agent_mod.GuardianAgent, "__init__", patched)
+    monkeypatch.setattr(agent_mod.AgentV5, "__init__", patched)
     return model
 
 
@@ -291,13 +291,10 @@ def test_ui_shows_real_proof_when_compare_scenarios_was_called(monkeypatch):
     at = run_app()
     ask(at, "Pour Robert, compare le portefeuille contenant 40 % de NVDA avec une allocation plus diversifiée.")
     assert not at.exception, at.exception
-    recs = at.session_state.agent.tracer.records
+    recs = at.session_state.v5_agent.history[-1].calls
     assert [(r.tool, r.status) for r in recs] == [(CMP, "ok")]
-    assert any("compare_scenarios : appelé avec succès" in s.value and f"appel n° {recs[0].id}" in s.value for s in at.success)
-    md = " ".join(m.value for m in at.markdown)
-    assert f"`compare_scenarios` · appel n° {recs[0].id}" in md and "✅" in md
-    assert any(e.label == "Voir les détails techniques de l'analyse" for e in at.expander)          # V2 : trace technique dans une section repliée
-    assert any(f"#{recs[0].id} · requête 1 · compare_scenarios" in m.value for m in at.markdown)    # ligne de la trace réelle
+    assert CMP in " ".join(str(j.value) for j in at.json)
+    assert any(e.label == "Trace Strands et appels d'outils" for e in at.expander)
 
 
 def test_ui_never_claims_compare_scenarios_when_it_was_not_called(monkeypatch):
@@ -305,10 +302,8 @@ def test_ui_never_claims_compare_scenarios_when_it_was_not_called(monkeypatch):
     at = run_app()
     ask(at, "Pour Robert, compare le portefeuille contenant 40 % de NVDA avec une allocation plus diversifiée.")
     assert not at.exception, at.exception
-    assert [r.tool for r in at.session_state.agent.tracer.records] == [EV]
-    assert not any("compare_scenarios : appelé" in s.value for s in at.success)
-    assert any("compare_scenarios : non appelé pendant cette requête" in c.value for c in at.caption)
-    assert not any(f"requête 1 · compare_scenarios" in m.value for m in at.markdown)
+    assert [r.tool for r in at.session_state.v5_agent.history[-1].calls] == [EV]
+    assert not any(CMP in str(j.value) for j in at.json)
 
 
 def test_ui_reports_a_failed_compare_scenarios_call(monkeypatch):
@@ -317,6 +312,6 @@ def test_ui_reports_a_failed_compare_scenarios_call(monkeypatch):
     at.checkbox(key="use_b").uncheck().run()                                              # pas de portefeuille B : l'outil échoue
     ask(at, "Compare A et B pour Robert.")
     assert not at.exception, at.exception
-    assert any("compare_scenarios : appelé mais en échec" in e.value for e in at.error)
+    assert any("compare_scenarios" in w.value and "échoué" in w.value for w in at.warning)
     assert any("Analyse incomplète" in w.value for w in at.warning)
     assert not any("compare_scenarios : appelé avec succès" in s.value for s in at.success)

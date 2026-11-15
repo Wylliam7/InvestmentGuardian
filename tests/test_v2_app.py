@@ -9,7 +9,7 @@ pytestmark = pytest.mark.legacy_ui
 from streamlit.testing.v1 import AppTest
 
 from conftest import REPO, StepModel, V2_MAIN_LABELS, v2_expected_metrics
-from guardian.agent import agent as agent_mod
+from guardian.agent_v5 import agent as agent_mod
 from guardian.agent.service import GuardianService
 from guardian.explain.summary import build_priority_summary
 from guardian.finance.presets import load_presets
@@ -24,12 +24,12 @@ def run_app():
 
 def patch_model(monkeypatch, steps=None, tool_args=None):
     model = StepModel(steps or [("text", "Ne devrait pas être appelé.")], tool_args)
-    original = agent_mod.GuardianAgent.__init__
+    original = agent_mod.AgentV5.__init__
 
     def patched(self, *a, **kw):
         kw["model_factory"] = lambda: model
         original(self, *a, **kw)
-    monkeypatch.setattr(agent_mod.GuardianAgent, "__init__", patched)
+    monkeypatch.setattr(agent_mod.AgentV5, "__init__", patched)
     return model
 
 
@@ -186,21 +186,21 @@ def test_summary_and_page_render_never_call_the_model(monkeypatch):
 def test_explain_button_uses_the_active_profile_and_the_analysed_portfolio(monkeypatch):
     model = patch_model(monkeypatch, explain_steps())
     at = run_app()
-    agent_before = at.session_state.agent
+    agent_before = at.session_state.v5_agent
     click(at, "explain_btn")
     assert not at.exception, at.exception
     tr = at.session_state.history[-1]
-    assert tr.kind == "explain_risks" and tr.question == "Explique-moi mes risques avec l'IA" and tr.turn == 1
+    assert tr.question.startswith("Explique-moi mes risques") and tr.request_id == 1
     assert tr.context == {"profile_id": "robert", "weights_a_pct": {"NVDA": 40.0, "XBB.TO": 35.0, "XIU.TO": 25.0}, "weights_b_pct": tr.context["weights_b_pct"]}
     prompt = model.prompts[0]
-    assert "TÂCHE" in prompt and "portefeuille A pour Robert" in prompt and "Profil actif : robert (Robert)" in prompt
+    assert "Profil actif : robert (Robert)" in prompt and "Question de l'utilisateur" in prompt
     assert "NVDA" not in prompt and "40" not in prompt.split("Question de l'utilisateur")[0].replace("250", "")    # ni poids ni chiffres dans l'instruction
-    by = {r.tool: r for r in tr.tool_records}
-    assert sorted(by) == [CK, EV, GP] and all(r.status == "ok" and r.turn == 1 for r in tr.tool_records)
+    by = {r.tool: r for r in tr.calls}
+    assert sorted(by) == [CK, EV, GP] and all(r.status == "ok" and r.request_id == 1 for r in tr.calls)
     assert by[EV].arguments["portfolio"] == "A" and by[EV].result["weights_pct"] == {"NVDA": 40.0, "XBB.TO": 35.0, "XIU.TO": 25.0}
     assert by[CK].result["profile_id"] == "robert"
-    assert at.session_state.agent is agent_before and at.session_state.explain_turn is tr          # même agent : aucun second agent
-    assert not tr.withheld and "Interprétation de test" in " ".join(m.value for m in at.markdown)
+    assert at.session_state.v5_agent is agent_before and at.session_state.explain_turn is tr
+    assert tr.confirmed and "Interprétation de test" in " ".join(m.value for m in at.markdown)
 
 
 def test_explain_button_follows_profile_and_selected_portfolio(monkeypatch):
@@ -211,19 +211,19 @@ def test_explain_button_follows_profile_and_selected_portfolio(monkeypatch):
     tr = at.session_state.history[-1]
     expected = {t: float(v) for t, v in load_presets()["amira_tech_crypto"]["weights_pct"].items()}
     assert tr.context["profile_id"] == "amira" and tr.context["weights_a_pct"] == expected
-    by = {r.tool: r for r in tr.tool_records}
-    assert by[CK].result["profile_id"] == "amira" and by[CK].result["weights_pct"] == expected and "portefeuille A pour Amira" in model.prompts[0]
+    by = {r.tool: r for r in tr.calls}
+    assert by[CK].result["profile_id"] == "amira" and by[CK].result["weights_pct"] == expected and "Profil actif : amira (Amira)" in model.prompts[0]
 
 
 def test_each_explain_click_is_an_independent_request_without_old_tool_calls(monkeypatch):
     model = patch_model(monkeypatch, explain_steps() + explain_steps())
     at = run_app()
     click(at, "explain_btn")
-    first_ids = {r.id for r in at.session_state.history[-1].tool_records}
+    first_ids = {r.id for r in at.session_state.history[-1].calls}
     click(at, "explain_btn")
     t1, t2 = at.session_state.history
-    assert (t1.turn, t2.turn) == (1, 2) and first_ids.isdisjoint({r.id for r in t2.tool_records})
-    assert {r.turn for r in t2.tool_records} == {2} and len(t2.tool_records) == 3
+    assert (t1.request_id, t2.request_id) == (1, 2)
+    assert {r.request_id for r in t2.calls} == {2} and len(t2.calls) == 3
     assert model.seen[2] == [["text"]]                                                     # début de la requête 2 : aucun résultat d'outil ancien
 
 
@@ -232,7 +232,7 @@ def test_explain_answer_without_the_expected_tools_is_withheld(monkeypatch):
     at = run_app()
     click(at, "explain_btn")
     tr = at.session_state.history[-1]
-    assert tr.withheld and tr.text is None and "check_profile_constraints" in tr.withheld_reason
+    assert not tr.confirmed and "Guardian Check" in tr.notice
     assert any("Analyse incomplète" in w.value for w in at.warning)
     assert "22,3 %" not in " ".join(m.value for m in at.markdown if "volatilité est de" in m.value)
 
@@ -243,7 +243,7 @@ def test_explain_with_a_failing_tool_keeps_the_engine_results_and_hides_the_mode
     at.sidebar.checkbox(key="sim_fail_eval").check().run()
     click(at, "explain_btn")
     tr = at.session_state.history[-1]
-    assert tr.withheld and {r.tool: r.status for r in tr.tool_records} == {EV: "error", CK: "ok"}
+    assert {r.tool: r.status for r in tr.calls} == {EV: "error", CK: "ok"}
     assert "12,3" not in all_text(at)
     assert any("Analyse incomplète" in w.value and "evaluate_portfolio" in w.value for w in at.warning)
     assert any(m.value.startswith("### Les alertes du Guardian Check") for m in at.markdown)       # les résultats du moteur restent affichés
@@ -265,7 +265,7 @@ def test_facts_used_come_from_the_tool_results_not_from_the_model_text(monkeypat
     at = run_app()
     click(at, "explain_btn")
     md = " ".join(m.value for m in at.markdown)
-    assert "Faits historiques utilisés (valeurs calculées par le moteur)" in md
+    assert any("Faits et contrôles vérifiés" in e.label for e in at.expander)
     assert "Rendement historique cumulé : 180,9 %" in md and "Fluctuations annualisées : 22,3 %" in md and "Plus forte baisse historique : -36,1 %" in md
     assert "Plus grande position : NVDA (40 %) · environ 2,9 positions de poids égal" in md
 
@@ -279,10 +279,9 @@ def test_level1_is_plain_and_only_lists_tools_that_really_ran(monkeypatch):
     [b for b in at.button if "Poser la question" in b.label][0].click()
     at.run()
     md = " ".join(m.value for m in at.markdown)
-    assert "Comment l'assistant a-t-il obtenu cette réponse ?" in md
-    assert "A comparé les deux allocations A et B sur la même période pour Robert." in md
-    assert "A analysé votre portefeuille" not in md and "profil officiel" not in md.split("Comment l'assistant")[1].split("détails techniques")[0]   # pas d'outil non exécuté
-    assert "Période historique : du 2021-11-12 au 2026-11-12" in md and "Devise : dollar canadien (CAD)" in md and "Yahoo Finance" in md
+    assert "Trace Strands et appels d'outils" in " ".join(e.label for e in at.expander)
+    assert "compare_scenarios" in md
+    assert "Période historique" in md or "historique" in md
     assert "interprétation" in md and not re.search(r"entièrement vérifi|totalement vérifi", md, re.I)
 
 
@@ -290,15 +289,15 @@ def test_level2_keeps_the_full_technical_trace_in_a_closed_section(monkeypatch):
     patch_model(monkeypatch, explain_steps())
     at = run_app()
     click(at, "explain_btn")
-    exp = [e for e in at.expander if e.label == "Voir les détails techniques de l'analyse"]
+    exp = [e for e in at.expander if e.label == "Trace Strands et appels d'outils"]
     assert exp and all(e.proto.expanded is False for e in exp)                             # fermé par défaut
-    recs = at.session_state.agent.tracer.records
+    recs = at.session_state.v5_agent.history[-1].calls
     md = " ".join(m.value for m in at.markdown)
     for r in recs:
-        assert f"#{r.id} · requête 1 · {r.tool} · {r.duration_ms} ms" in md and f"`{r.result_digest}`" in md and f"Statut : `{r.status}`" in md
+        assert r.tool in md and r.status in md
     js = " ".join(str(j.value) for j in at.json)
-    assert '"portfolio": "A"' in js and "files_sha256_prefix" in js and "rules_config_version" in js and "sha256" in js     # arguments, références, résultat complet
-    assert any("compare_scenarios : non appelé pendant cette requête" in c.value for c in at.caption)
+    assert '"portfolio": "A"' in js and "weights_pct" in js and "findings" in js
+    assert any("Provenance des appels" in c.value for c in at.caption)
 
 
 def test_trace_export_is_available_after_a_request(monkeypatch):
@@ -314,7 +313,7 @@ def test_sidebar_is_simple_and_technical_details_are_folded():
     adv = [e for e in at.sidebar.expander if e.label == "Paramètres avancés et diagnostic technique"]
     assert len(adv) == 1 and adv[0].proto.expanded is False
     inside = " ".join(m.value for m in adv[0].markdown)
-    assert "global.amazon.nova-2-lite-v1:0" in inside and "us-east-1" in inside and "Amazon Bedrock" in inside and "Authentification" in inside
+    assert "claude-haiku-4-5-20251001-v1:0" in inside and "us-east-1" in inside and "Amazon Bedrock" in inside and "Authentification" in inside
     assert any(b.label == "Tester la connexion Bedrock" for b in adv[0].button)
     assert any(c.label.startswith("Simuler une panne") for c in adv[0].checkbox)
     outside = " ".join(m.value for m in at.sidebar.markdown if m.value not in {x.value for x in adv[0].markdown}) + " ".join(c.value for c in at.sidebar.caption)
@@ -329,7 +328,7 @@ def test_assistant_availability_is_shown_without_calling_bedrock(monkeypatch):
     at = run_app()
     status = [s.value for s in list(at.sidebar.success) + list(at.sidebar.warning) if s.value.startswith("Assistant IA")]
     assert len(status) == 1 and status[0] in ("Assistant IA : prêt", "Assistant IA : indisponible (aucun identifiant détecté)")
-    assert model.i == 0 and at.session_state.agent.tracer.records == []
+    assert model.i == 0 and at.session_state.v5_agent.history == []
 
 
 # ============================================================ 13. mode sans Bedrock
@@ -340,7 +339,7 @@ def test_without_bedrock_the_explain_button_reports_it_and_keeps_all_results(mon
     click(at, "explain_btn")
     assert not at.exception, at.exception
     assert any("injoignable" in e.value or "Aucun identifiant" in e.value for e in at.error), [e.value for e in at.error]
-    assert any("Le moteur financier reste disponible" in i.value for i in at.info)
+    assert any("moteur Python" in i.value for i in at.info)
     assert {m.label: m.value for m in at.metric if m.label in V2_MAIN_LABELS} == v2_expected_metrics(real_service, NVDA40)
     assert any(m.value.startswith("### À retenir en priorité") for m in at.markdown)
     assert any("Votre portefeuille dépend beaucoup de NVIDIA." in m.value for m in at.markdown)

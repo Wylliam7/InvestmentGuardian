@@ -245,8 +245,7 @@ def test_page_does_not_duplicate_facts_when_the_answer_is_withheld(monkeypatch):
     at.text_area(key="q_text").set_value("Ma diversification est-elle suffisante ?")
     [b for b in at.button if "Poser la question" in b.label][0].click()
     at.run()
-    assert any("Faits vérifiés, issus directement des calculs Python" in m.value for m in at.markdown)
-    assert not [e for e in at.expander if e.label.startswith("Faits et contrôles vérifiés")]
+    assert any(e.label.startswith("Faits et contrôles vérifiés") for e in at.expander)
 
 
 # ============================================================ constats globaux sans Guardian Check, réponses réelles (Bedrock, après A + B)

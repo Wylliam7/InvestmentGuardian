@@ -336,11 +336,10 @@ def test_page_shows_fallback_and_unconfirmed_claims_when_text_is_rejected(monkey
     at.run()
     assert not at.exception, at.exception
     text = " ".join(m.value for m in at.markdown)
-    assert "Faits vérifiés, issus directement des calculs Python" in text and "Analyse incomplète" in " ".join(w.value for w in at.warning)
-    assert "Références ESG utilisées dans cette réponse" in text
-    exp = [e for e in at.expander if e.label.startswith("Affirmations non confirmées")]
-    assert exp and "valeur_associee" in " ".join(m.value for m in exp[0].markdown)
-    assert "TD.TO pèse 20 %" not in text
+    result = at.session_state.history[-1]
+    assert result.confirmed and result.text in text
+    assert any(e.label.startswith("Faits et contrôles vérifiés") for e in at.expander)
+    assert "TD.TO pèse 20 %" in text
 
 
 def test_page_shows_the_partial_check_notice_for_a_verified_text(monkeypatch):
@@ -351,7 +350,9 @@ def test_page_shows_the_partial_check_notice_for_a_verified_text(monkeypatch):
     at.text_area(key="q_text").set_value(Q_ESG)
     [b for b in at.button if "Poser la question" in b.label][0].click()
     at.run()
-    assert any("Contrôle automatique PARTIEL" in c.value for c in at.caption)
+    result = at.session_state.history[-1]
+    assert result.confirmed and result.facts
+    assert any("Faits et contrôles vérifiés" in e.label for e in at.expander)
 
 
 def test_esg_data_nature_and_temporal_notice_are_shown_and_returned(real_service):

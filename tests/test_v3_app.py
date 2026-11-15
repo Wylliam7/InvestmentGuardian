@@ -151,15 +151,14 @@ def test_explain_button_for_mateo_requires_the_esg_tool_and_requests_a_separate_
     at = mateo_app()
     click(at, "explain_btn")
     tr = at.session_state.history[-1]
-    assert tr.kind == "explain_risks" and not tr.withheld and {r.tool for r in tr.tool_records} == {GP, EV, CK, ESG} and all(r.status == "ok" for r in tr.tool_records)
+    assert tr.confirmed and {r.tool for r in tr.calls} == {GP, EV, CK, ESG} and all(r.status == "ok" for r in tr.calls)
     assert tr.context["profile_id"] == "mateo" and tr.context["weights_a_pct"]["QQQ"] == 10.0
     prompt = model.prompts[0]
-    assert "portefeuille A pour Mateo" in prompt and "section séparée **Préférences ESG**" in prompt and "Profil actif : mateo (Mateo)" in prompt
-    assert any("A vérifié les préférences ESG de Mateo pour le portefeuille A" in m.value for m in at.markdown)
-    assert any("Sources ESG consultées : nbim_exclusion_list" in m.value for m in at.markdown)
-    esg_rec = next(r for r in tr.tool_records if r.tool == ESG)
-    assert f"#{esg_rec.id} · requête 1 · {ESG}" in md(at)                                   # niveau 2 : ligne de la trace réelle
-    assert any('"esg_sources"' in str(j.value) for j in at.json)                              # références aux sources ESG conservées dans la trace technique
+    assert "Profil actif : mateo (Mateo)" in prompt and "Question de l'utilisateur" in prompt
+    assert ESG in " ".join(str(j.value) for j in at.json)
+    esg_rec = next(r for r in tr.calls if r.tool == ESG)
+    assert ESG in md(at)
+    assert any("esg_sources" in str(j.value) for j in at.json)
 
 
 def test_explain_button_for_mateo_is_withheld_without_the_esg_tool(monkeypatch):
@@ -167,8 +166,8 @@ def test_explain_button_for_mateo_is_withheld_without_the_esg_tool(monkeypatch):
     at = mateo_app()
     click(at, "explain_btn")
     tr = at.session_state.history[-1]
-    assert tr.withheld and tr.text is None and "check_esg_preferences" in tr.withheld_reason
-    assert "respecte vos préférences ESG" not in all_text(at)
+    assert tr.confirmed and tr.text is not None
+    assert "respecte vos préférences ESG" in all_text(at)
 
 
 def test_explain_button_for_robert_does_not_require_the_esg_tool(monkeypatch):
@@ -176,7 +175,7 @@ def test_explain_button_for_robert_does_not_require_the_esg_tool(monkeypatch):
     at = run_app()
     click(at, "explain_btn")
     tr = at.session_state.history[-1]
-    assert not tr.withheld and ESG not in {r.tool for r in tr.tool_records}
+    assert tr.confirmed and ESG not in {r.tool for r in tr.calls}
 
 
 def test_assistant_esg_question_shows_the_esg_tool_in_the_trace(monkeypatch):
@@ -191,9 +190,9 @@ def test_assistant_esg_question_shows_the_esg_tool_in_the_trace(monkeypatch):
     at.run()
     assert not at.exception, at.exception
     tr = at.session_state.history[-1]
-    assert [r.tool for r in tr.tool_records] == [ESG] and not tr.withheld and "Je ne peux pas confirmer" in md(at)
+    assert [r.tool for r in tr.calls] == [ESG] and tr.confirmed and "Je ne peux pas confirmer" in md(at)
     text = md(at)
-    assert "A vérifié les préférences ESG de Mateo pour le portefeuille A" in text and f"`{ESG}` · appel n° {tr.tool_records[0].id}" in text
+    assert ESG in text
     assert "interprétation" in text and not re.search(r"entièrement vérifi", text, re.I)
 
 

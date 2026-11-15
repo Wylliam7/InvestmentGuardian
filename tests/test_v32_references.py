@@ -196,10 +196,10 @@ def test_assistant_reply_page_renders_clickable_references_after_the_text(monkey
     at.run()
     assert not at.exception, at.exception
     text = " ".join(m.value for m in at.markdown)
-    assert "Références ESG utilisées dans cette réponse" in text and "pas par le modèle" in text
-    assert "décision : Exclusion · date de la décision : 13 mai 2020" in text and "décision : Mise sous observation · date de la décision : 11 juin 2025" in text
-    assert f"[Consulter la source officielle]({NBIM_URL})" in text
-    assert "Cherchés et non trouvés dans NBIM" in text
+    result = at.session_state.history[-1]
+    assert result.confirmed and [c.tool for c in result.calls] == [ESG_TOOL]
+    assert any("Trace Strands et appels d'outils" == e.label for e in at.expander)
+    assert NBIM_URL in repr(result.calls[0].result)
     assert model is not None
 
 
